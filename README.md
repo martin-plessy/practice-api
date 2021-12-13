@@ -28,6 +28,12 @@ coverage run -m pytest ; coverage report
 ## Run the App
 
 ```ps1
+# Create the database schema:
+flask create-db
+
 # Start the development server:
 $Env:FLASK_DEBUG = 1 ; flask run
+
+# Fill the database with sample data:
+flask fill-db
 ```

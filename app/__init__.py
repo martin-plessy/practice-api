@@ -1,12 +1,15 @@
-from flask import Flask, jsonify
-from os import makedirs
+from app.cli import init_app_cli
+from app.db import init_app_db
+from flask import Flask
+from os import makedirs, path
 from typing import Any, Mapping
 
 def create_app(test_config: Mapping[str, Any] = None):
     app = Flask(__name__, instance_relative_config = True)
 
     app.config.from_mapping(
-        SECRET_KEY = 'dev'
+        SECRET_KEY = 'dev',
+        DATABASE = path.join(app.instance_path, 'app.sqlite'),
     )
 
     if test_config is None:
@@ -16,10 +19,12 @@ def create_app(test_config: Mapping[str, Any] = None):
 
     makedirs(app.instance_path, exist_ok = True)
 
-    @app.route('/')
-    def index():
-        return jsonify(
-            message = 'Hello, there!'
-        )
+    init_app_db(app)
+    init_app_cli(app)
+    init_app_routes(app)
 
     return app
+
+def init_app_routes(app: Flask):
+    pass
+    # app.register_blueprint(auth.bp, url_prefix='/auth')
