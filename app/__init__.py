@@ -1,5 +1,7 @@
+from flask.json import jsonify
 from app.cli import init_app_cli
 from app.db import init_app_db
+from app.employee_type import blueprint as employee_type
 from flask import Flask
 from os import makedirs, path
 from typing import Any, Mapping
@@ -26,5 +28,8 @@ def create_app(test_config: Mapping[str, Any] = None):
     return app
 
 def init_app_routes(app: Flask):
-    pass
-    # app.register_blueprint(auth.bp, url_prefix='/auth')
+    app.register_blueprint(employee_type, url_prefix = '/employee-type')
+
+    @app.errorhandler(404)
+    def handle_404(_):
+        return jsonify({ 'title': 'not found' }), 404
