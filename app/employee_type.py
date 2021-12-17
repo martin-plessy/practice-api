@@ -1,13 +1,12 @@
-from app.db import open_db
+from app.db import db
 from flask import Blueprint, jsonify, request
 from marshmallow import fields, post_load, Schema, validate, ValidationError
-from sqlite3 import IntegrityError, Row
-from typing import Any, Dict, List, Mapping, Tuple, Union
+from sqlalchemy.exc import IntegrityError
+from typing import Any, List, Mapping
 
-class EmployeeType:
-    def __init__(self, uid: int = -1, type: str = 0):
-        self.uid = uid
-        self.type = type
+class EmployeeType(db.Model):
+    uid = db.Column(db.Integer(), primary_key = True)
+    type = db.Column(db.String(50), nullable = False, unique = True)
 
 class EmployeeTypeSchema(Schema):
     uid = fields.Int(required = False, validate = [ validate.Range(min = 1) ])
@@ -22,25 +21,15 @@ blueprint = Blueprint("employee_type", __name__)
 
 @blueprint.route("/", methods = [ "GET" ])
 def get_all():
-    employee_types = open_db().execute("""
-        SELECT employee_type.uid, employee_type.type
-        FROM employee_type
-    """).fetchall()
+    employee_types: List[EmployeeType] = EmployeeType.query.all()
 
     return schema.dumps(employee_types, many = True), 200, { 'Content-Type': 'application/json; charset=utf-8' }
 
 @blueprint.route("/<int:id>", methods = [ "GET" ], )
 def get_one(id: int):
-    employee_type = open_db().execute("""
-        SELECT employee_type.uid, employee_type.type
-        FROM employee_type
-        WHERE uid = ?
-    """, (id, )).fetchone()
+    employee_type: EmployeeType = EmployeeType.query.get_or_404(id)
 
-    if employee_type is None:
-        return { 'title': 'not found' }, 404
-    else:
-        return schema.dumps(employee_type, many = False), 200, { 'Content-Type': 'application/json; charset=utf-8' }
+    return schema.dumps(employee_type, many = False), 200, { 'Content-Type': 'application/json; charset=utf-8' }
 
 @blueprint.route("/", methods = [ "POST" ])
 def post_one():
@@ -50,20 +39,12 @@ def post_one():
         return error.messages, 400
 
     try:
-        db = open_db()
-
-        employee_type.uid = db.execute("""
-            INSERT INTO employee_type (type)
-            VALUES (?)
-        """, (employee_type.type, )).lastrowid
-
-        db.commit()
-
+        db.session.add(employee_type)
+        db.session.commit()
     except IntegrityError:
         return { 'type': [ 'Value must be unique.' ] }, 409
 
-    else:
-        return schema.dumps(employee_type, many = False), 201, { 'Content-Type': 'application/json; charset=utf-8' }
+    return schema.dumps(employee_type, many = False), 201, { 'Content-Type': 'application/json; charset=utf-8' }
 
 @blueprint.route("/<int:id>", methods = [ "PUT" ])
 def put_one(id: int):
@@ -73,35 +54,19 @@ def put_one(id: int):
     except ValidationError as error:
         return error.messages, 400
 
+    existing_employee_type: EmployeeType = EmployeeType.query.get_or_404(id)
+
     try:
-        db = open_db()
-
-        updates = db.execute("""
-            UPDATE employee_type
-            SET type = ?
-            WHERE uid = ?
-        """, (employee_type.type, employee_type.uid, )).rowcount
-
-        db.commit()
-
+        existing_employee_type.type = employee_type.type
+        db.session.commit()
     except IntegrityError:
         return { 'type': [ 'Value must be unique.' ] }, 409
 
-    else:
-        if updates == 0:
-            return { 'title': 'not found' }, 404
-        else:
-            return schema.dumps(employee_type, many = False), 200, { 'Content-Type': 'application/json; charset=utf-8' }
+    return schema.dumps(existing_employee_type, many = False), 200, { 'Content-Type': 'application/json; charset=utf-8' }
 
 @blueprint.route("/<int:id>", methods = [ "DELETE" ])
 def delete_one(id: int):
-    db = open_db()
-
-    db.execute("""
-        DELETE FROM employee_type
-        WHERE uid = ?
-    """, (id, ))
-
-    db.commit()
+    EmployeeType.query.filter(EmployeeType.uid == id).delete()
+    db.session.commit()
 
     return jsonify(), 204

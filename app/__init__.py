@@ -11,7 +11,7 @@ def create_app(test_config: Mapping[str, Any] = None):
 
     app.config.from_mapping(
         SECRET_KEY = 'dev',
-        DATABASE = path.join(app.instance_path, 'app.sqlite'),
+        SQLALCHEMY_DATABASE_URI = 'sqlite:///' + path.join(app.instance_path, 'app.sqlite'),
     )
 
     if test_config is None:
