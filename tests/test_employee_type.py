@@ -36,27 +36,21 @@ def test_get_id_404(client: FlaskClient):
 # -----------------------------------------------------------------------------
 
 @mark.parametrize(('input', 'expected_reason'), [
-    ({ 'type': 42 }, 'must be string'),
-    ({ 'type': '' }, 'required'),
-    ({ 'type': None }, 'required'),
-    ({ }, 'required'),
-    ({ 'type': '-------10|-------20|-------30|-------40|-------50| TOO LONG' }, 'max length exceeded'),
+    ({ 'type': 42 }, 'Not a valid string.'),
+    ({ 'type': '' }, 'Length must be between 1 and 50.'),
+    ({ 'type': None }, 'Field may not be null.'),
+    ({ }, 'Missing data for required field.'),
+    ({ 'type': '-------10|-------20|-------30|-------40|-------50| TOO LONG' }, 'Length must be between 1 and 50.'),
 ])
 def test_post_invalid(client: FlaskClient, input: Dict[str, Any], expected_reason: str):
     assert_json(client.post('/employee-type/', json = input), 400, {
-        'title': 'bad request',
-        'invalid-params': [
-            { 'name': 'type', 'reason': expected_reason }
-        ]
+        'type': [ expected_reason ]
     })
 
 def test_post_duplicate(client: FlaskClient):
     assert_json(client.post('/employee-type/', json = { 'type': 'Duplicate' }), 201, { 'uid': 1, 'type': 'Duplicate' })
     assert_json(client.post('/employee-type/', json = { 'type': 'Duplicate' }), 409, {
-        'title': 'conflict',
-        'invalid-params': [
-            { 'name': 'type', 'reason': 'duplicated' }
-        ]
+        'type': [ 'Value must be unique.' ]
     })
 
 def test_post(client: FlaskClient):
@@ -89,20 +83,17 @@ def test_put_id_404(client: FlaskClient):
     })
 
 @mark.parametrize(('input', 'expected_reason'), [
-    ({ 'type': 42 }, 'must be string'),
-    ({ 'type': '' }, 'required'),
-    ({ 'type': None }, 'required'),
-    ({ }, 'required'),
-    ({ 'type': '-------10|-------20|-------30|-------40|-------50| TOO LONG' }, 'max length exceeded'),
+    ({ 'type': 42 }, 'Not a valid string.'),
+    ({ 'type': '' }, 'Length must be between 1 and 50.'),
+    ({ 'type': None }, 'Field may not be null.'),
+    ({ }, 'Missing data for required field.'),
+    ({ 'type': '-------10|-------20|-------30|-------40|-------50| TOO LONG' }, 'Length must be between 1 and 50.'),
 ])
 def test_put_invalid(client: FlaskClient, input: Dict[str, Any], expected_reason: str):
     client.post('/employee-type/', json = { 'type': 'A' })
 
     assert_json(client.put('/employee-type/1', json = input), 400, {
-        'title': 'bad request',
-        'invalid-params': [
-            { 'name': 'type', 'reason': expected_reason }
-        ]
+        'type': [ expected_reason ]
     })
 
 def test_put_duplicate(client: FlaskClient):
@@ -110,10 +101,7 @@ def test_put_duplicate(client: FlaskClient):
     client.post('/employee-type/', json = { 'type': 'B' })
 
     assert_json(client.put('/employee-type/2', json = { 'type': 'Duplicate' }), 409, {
-        'title': 'conflict',
-        'invalid-params': [
-            { 'name': 'type', 'reason': 'duplicated' }
-        ]
+        'type': [ 'Value must be unique.' ]
     })
 
 def test_put_accepts_self_duplicate(client: FlaskClient):

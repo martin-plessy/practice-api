@@ -13,6 +13,9 @@ py -m venv .venv
 
 # Installing project dependencies:
 pip install -r requirements.txt
+
+# You may also need:
+pip install -e .
 ```
 
 ## Run the Tests
