@@ -55,6 +55,9 @@ def test_post_duplicate(client: FlaskClient):
         'type': [ 'Value must be unique.' ]
     })
 
+def test_post_ignores_uid(client: FlaskClient):
+    assert_json(client.post('/employee-type/', json = { 'uid': 42, 'type': '42' }), 201, { 'uid': 1, 'type': '42' })
+
 def test_post(client: FlaskClient):
     assert_json(client.post('/employee-type/', json = { 'type': 'A' }), 201, { 'uid': 1, 'type': 'A' })
     assert_json(client.get('/employee-type/'), 200, [

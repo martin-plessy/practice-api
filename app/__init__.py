@@ -1,6 +1,6 @@
 from app.cli import init_app_cli
 from app.db import init_app_db
-from app.employee_type import EmployeeTypeCollection, EmployeeTypeItem
+from app.employee_type import employee_type_ns
 from flask import Flask
 from flask_restx import Api
 from os import makedirs, path
@@ -29,5 +29,4 @@ def create_app(test_config: Mapping[str, Any] = None):
     return app
 
 def init_api_resources(api: Api):
-    api.add_resource(EmployeeTypeCollection, '/employee-type/')
-    api.add_resource(EmployeeTypeItem, '/employee-type/<int:id>')
+    api.add_namespace(employee_type_ns)
