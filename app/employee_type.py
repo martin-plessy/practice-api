@@ -1,5 +1,7 @@
+import marshmallow
 from app.db import db
-from flask import Blueprint, jsonify, request
+from flask import request
+from flask_restx import Resource
 from marshmallow import fields, post_load, Schema, validate, ValidationError
 from sqlalchemy.exc import IntegrityError
 from typing import Any, List, Mapping
@@ -17,56 +19,52 @@ class EmployeeTypeSchema(Schema):
         return EmployeeType(**data)
 
 schema = EmployeeTypeSchema()
-blueprint = Blueprint("employee_type", __name__)
 
-@blueprint.route("/", methods = [ "GET" ])
-def get_all():
-    employee_types: List[EmployeeType] = EmployeeType.query.all()
+class EmployeeTypeCollection(Resource):
+    def get(self):
+        employee_types: List[EmployeeType] = EmployeeType.query.all()
 
-    return schema.dumps(employee_types, many = True), 200, { 'Content-Type': 'application/json; charset=utf-8' }
+        return schema.dump(employee_types, many = True), 200
 
-@blueprint.route("/<int:id>", methods = [ "GET" ], )
-def get_one(id: int):
-    employee_type: EmployeeType = EmployeeType.query.get_or_404(id)
+    def post(self):
+        try:
+            employee_type: EmployeeType = schema.loads(request.data, many = False)
+        except ValidationError as error:
+            return error.messages, 400
 
-    return schema.dumps(employee_type, many = False), 200, { 'Content-Type': 'application/json; charset=utf-8' }
+        try:
+            db.session.add(employee_type)
+            db.session.commit()
+        except IntegrityError:
+            return { 'type': [ 'Value must be unique.' ] }, 409
 
-@blueprint.route("/", methods = [ "POST" ])
-def post_one():
-    try:
-        employee_type: EmployeeType = schema.loads(request.data, many = False)
-    except ValidationError as error:
-        return error.messages, 400
+        return schema.dump(employee_type, many = False), 201
 
-    try:
-        db.session.add(employee_type)
+class EmployeeTypeItem(Resource):
+    def get(self, id: int):
+        employee_type: EmployeeType = EmployeeType.query.get_or_404(id)
+
+        return schema.dump(employee_type, many = False), 200
+
+    def put(self, id: int):
+        try:
+            employee_type: EmployeeType = schema.loads(request.data, many = False)
+            employee_type.uid = id
+        except ValidationError as error:
+            return error.messages, 400
+
+        existing_employee_type: EmployeeType = EmployeeType.query.get_or_404(id)
+
+        try:
+            existing_employee_type.type = employee_type.type
+            db.session.commit()
+        except IntegrityError:
+            return { 'type': [ 'Value must be unique.' ] }, 409
+
+        return schema.dump(existing_employee_type, many = False), 200
+
+    def delete(self, id: int):
+        EmployeeType.query.filter(EmployeeType.uid == id).delete()
         db.session.commit()
-    except IntegrityError:
-        return { 'type': [ 'Value must be unique.' ] }, 409
 
-    return schema.dumps(employee_type, many = False), 201, { 'Content-Type': 'application/json; charset=utf-8' }
-
-@blueprint.route("/<int:id>", methods = [ "PUT" ])
-def put_one(id: int):
-    try:
-        employee_type: EmployeeType = schema.loads(request.data, many = False)
-        employee_type.uid = id
-    except ValidationError as error:
-        return error.messages, 400
-
-    existing_employee_type: EmployeeType = EmployeeType.query.get_or_404(id)
-
-    try:
-        existing_employee_type.type = employee_type.type
-        db.session.commit()
-    except IntegrityError:
-        return { 'type': [ 'Value must be unique.' ] }, 409
-
-    return schema.dumps(existing_employee_type, many = False), 200, { 'Content-Type': 'application/json; charset=utf-8' }
-
-@blueprint.route("/<int:id>", methods = [ "DELETE" ])
-def delete_one(id: int):
-    EmployeeType.query.filter(EmployeeType.uid == id).delete()
-    db.session.commit()
-
-    return jsonify(), 204
+        return '', 204

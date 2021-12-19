@@ -8,6 +8,8 @@ def assert_json(response: test.TestResponse, expected_code: int, expected_body: 
 
     if expected_code == 204:
         assert response.data == b''
+    elif expected_code == 404:
+        pass
     else:
         assert response.mimetype == 'application/json'
         assert response.json == expected_body

@@ -1,13 +1,14 @@
-from flask.json import jsonify
 from app.cli import init_app_cli
 from app.db import init_app_db
-from app.employee_type import blueprint as employee_type
+from app.employee_type import EmployeeTypeCollection, EmployeeTypeItem
 from flask import Flask
+from flask_restx import Api
 from os import makedirs, path
 from typing import Any, Mapping
 
 def create_app(test_config: Mapping[str, Any] = None):
     app = Flask(__name__, instance_relative_config = True)
+    api = Api(app)
 
     app.config.from_mapping(
         SECRET_KEY = 'dev',
@@ -23,13 +24,10 @@ def create_app(test_config: Mapping[str, Any] = None):
 
     init_app_db(app)
     init_app_cli(app)
-    init_app_routes(app)
+    init_api_resources(api)
 
     return app
 
-def init_app_routes(app: Flask):
-    app.register_blueprint(employee_type, url_prefix = '/employee-type')
-
-    @app.errorhandler(404)
-    def handle_404(_):
-        return jsonify({ 'title': 'not found' }), 404
+def init_api_resources(api: Api):
+    api.add_resource(EmployeeTypeCollection, '/employee-type/')
+    api.add_resource(EmployeeTypeItem, '/employee-type/<int:id>')
