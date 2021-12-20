@@ -14,14 +14,10 @@ def test_get(client: FlaskClient):
 
 def test_get_id_nonint(client: FlaskClient):
     # Returns 404 thanks to Flask's typed URL dynamic sections.
-    assert_json(client.get('/employee-type/frog'), 404, {
-        'title': 'not found'
-    })
+    assert_json(client.get('/employee-type/frog'), 404)
 
 def test_get_id_404(client: FlaskClient):
-    assert_json(client.get('/employee-type/404'), 404, {
-        'title': 'not found'
-    })
+    assert_json(client.get('/employee-type/404'), 404)
 
 # POST /employee-type
 # -----------------------------------------------------------------------------
@@ -67,14 +63,10 @@ def test_post(client: FlaskClient):
 
 def test_put_id_nonint(client: FlaskClient):
     # Returns 404 thanks to Flask's typed URL dynamic sections.
-    assert_json(client.put('/employee-type/frog', json = { 'type': 'X' }), 404, {
-        'title': 'not found'
-    })
+    assert_json(client.put('/employee-type/frog', json = { 'type': 'X' }), 404)
 
 def test_put_id_404(client: FlaskClient):
-    assert_json(client.put('/employee-type/404', json = { 'type': 'X' }), 404, {
-        'title': 'not found'
-    })
+    assert_json(client.put('/employee-type/404', json = { 'type': 'X' }), 404)
 
 @mark.parametrize(('input', 'expected_reason'), [
     ({ 'type': 42 }, 'Not a valid string.'),
@@ -132,9 +124,7 @@ def test_put(client: FlaskClient):
 
 def test_delete_id_nonint(client: FlaskClient):
     # Returns 404 thanks to Flask's typed URL dynamic sections.
-    assert_json(client.delete('/employee-type/frog'), 404, {
-        'title': 'not found'
-    })
+    assert_json(client.delete('/employee-type/frog'), 404)
 
 def test_delete_id_404(client: FlaskClient):
     # Idempotent.
@@ -153,6 +143,4 @@ def test_delete(client: FlaskClient):
     assert_json(client.get('/employee-type/'), 200, [
         { 'uid': 2, 'type': 'B' }
     ])
-    assert_json(client.get('/employee-type/1'), 404, {
-        'title': 'not found'
-    })
+    assert_json(client.get('/employee-type/1'), 404)
