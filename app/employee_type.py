@@ -1,82 +1,72 @@
+from app.api import ApiBlueprint
 from app.db import db
-from flask import request
-from flask_restx import fields, Namespace, Resource
-from marshmallow import post_load, Schema, validate, ValidationError
-from marshmallow.fields import Int, Str
+from flask.views import MethodView
+from flask_smorest import abort
+from marshmallow import fields, post_load, Schema, validate
 from sqlalchemy.exc import IntegrityError
-from typing import Any, List, Mapping
+from typing import Any, Mapping
 
 class EmployeeType(db.Model):
     uid = db.Column(db.Integer(), primary_key = True)
     type = db.Column(db.String(50), nullable = False, unique = True)
 
 class EmployeeTypeSchema(Schema):
-    uid = Int(required = False, validate = [ validate.Range(min = 1) ])
-    type = Str(required = True, validate = [ validate.Length(min = 1, max = 50) ])
+    uid = fields.Int(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
+    type = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 50) ])
 
     @post_load
     def dict_to_object(self, data: Mapping[str, Any], **kwargs) -> EmployeeType:
         return EmployeeType(**data)
 
-schema = EmployeeTypeSchema()
+bp = ApiBlueprint('Employee Type', __name__, url_prefix = '/employee-type')
 
-employee_type_ns = Namespace("employee-type")
-
-employee_type_input = employee_type_ns.model('EmployeeType_input', {
-    'type': fields.String()
-})
-
-class EmployeeTypeCollection(Resource):
+@bp.route('/')
+class EmployeeTypeCollection(MethodView):
+    @bp.response(200, EmployeeTypeSchema(many = True))
     def get(self):
-        employee_types: List[EmployeeType] = EmployeeType.query.all()
+        return EmployeeType.query.all() # List[EmployeeType]
 
-        return schema.dump(employee_types, many = True), 200
-
-    @employee_type_ns.expect(employee_type_input)
-    def post(self):
-        try:
-            employee_type: EmployeeType = schema.loads(request.data, many = False)
-            employee_type.uid = None
-        except ValidationError as error:
-            return error.messages, 400
-
+    @bp.arguments(EmployeeTypeSchema)
+    @bp.response(201, EmployeeTypeSchema)
+    def post(self, employee_type: EmployeeType):
         try:
             db.session.add(employee_type)
             db.session.commit()
+
         except IntegrityError:
-            return { 'type': [ 'Value must be unique.' ] }, 409
+            abort(409, errors = {
+                'json': {
+                    'type': [ 'Value must be unique.' ]
+                }
+            })
 
-        return schema.dump(employee_type, many = False), 201
+        return employee_type
 
-class EmployeeTypeItem(Resource):
+@bp.route('/<int:id>')
+class EmployeeTypeItem(MethodView):
+    @bp.response(200, EmployeeTypeSchema)
     def get(self, id: int):
-        employee_type: EmployeeType = EmployeeType.query.get_or_404(id)
+        return EmployeeType.query.get_or_404(id) # EmployeeType
 
-        return schema.dump(employee_type, many = False), 200
-
-    @employee_type_ns.expect(employee_type_input)
-    def put(self, id: int):
-        try:
-            employee_type: EmployeeType = schema.loads(request.data, many = False)
-            employee_type.uid = id
-        except ValidationError as error:
-            return error.messages, 400
-
+    @bp.arguments(EmployeeTypeSchema)
+    @bp.response(200, EmployeeTypeSchema)
+    def put(self, employee_type: EmployeeType, id: int):
         existing_employee_type: EmployeeType = EmployeeType.query.get_or_404(id)
 
         try:
             existing_employee_type.type = employee_type.type
             db.session.commit()
+
         except IntegrityError:
-            return { 'type': [ 'Value must be unique.' ] }, 409
+             abort(409, errors = {
+                'json': {
+                    'type': [ 'Value must be unique.' ]
+                }
+            })
 
-        return schema.dump(existing_employee_type, many = False), 200
+        return existing_employee_type
 
+    @bp.response(204)
     def delete(self, id: int):
         EmployeeType.query.filter(EmployeeType.uid == id).delete()
         db.session.commit()
-
-        return '', 204
-
-employee_type_ns.add_resource(EmployeeTypeCollection, '/')
-employee_type_ns.add_resource(EmployeeTypeItem, '/<int:id>')
