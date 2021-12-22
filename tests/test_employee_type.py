@@ -59,7 +59,7 @@ def test_post_invalid(client: FlaskClient):
 
     assert_bad_request(
         client.post('/employee-types/', json = {
-            'type': '-------10|-------20|-------30|-------40|-------50| TOO LONG'
+            'type': 'X' * 51
         }),
         expected_validation_messages = {
             'type': 'Length must be between 1 and 50.'
@@ -208,7 +208,7 @@ def test_put_invalid(client: FlaskClient):
 
     assert_bad_request(
         client.put('/employee-types/1', json = {
-            'type': '-------10|-------20|-------30|-------40|-------50| TOO LONG'
+            'type': 'X' * 51
         }),
         expected_validation_messages = {
             'type': 'Length must be between 1 and 50.'
