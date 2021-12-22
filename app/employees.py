@@ -18,9 +18,9 @@ class EmployeeTypeSchema(Schema):
     def dict_to_object(self, data: Mapping[str, Any], **kwargs) -> EmployeeType:
         return EmployeeType(**data)
 
-bp = ApiBlueprint('Employee Type', __name__, url_prefix = '/employee-type')
+bp = ApiBlueprint('Employees', __name__)
 
-@bp.route('/')
+@bp.route('/employee-types/')
 class EmployeeTypeCollection(MethodView):
     @bp.response(200, EmployeeTypeSchema(many = True))
     def get(self):
@@ -42,7 +42,7 @@ class EmployeeTypeCollection(MethodView):
 
         return employee_type
 
-@bp.route('/<int:id>')
+@bp.route('/employee-types/<int:id>')
 class EmployeeTypeItem(MethodView):
     @bp.response(200, EmployeeTypeSchema)
     def get(self, id: int):

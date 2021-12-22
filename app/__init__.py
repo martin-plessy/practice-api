@@ -1,6 +1,6 @@
 from app.cli import init_app_cli
 from app.db import init_app_db
-from app.employee_type import bp as employee_type_bp
+from app.employees import bp as employees_bp
 from flask import Flask
 from flask_smorest import Api
 from os import makedirs, path
@@ -36,4 +36,4 @@ def create_app(test_config: Mapping[str, Any] = None):
     return app
 
 def init_api_resources(api: Api):
-    api.register_blueprint(employee_type_bp)
+    api.register_blueprint(employees_bp)
