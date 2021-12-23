@@ -1,5 +1,5 @@
 from app.api import ApiBlueprint
-from app.db import db
+from app.db import FkReference, db
 from flask.views import MethodView
 from flask_smorest import abort
 from marshmallow import fields, post_load, Schema, validate
@@ -16,6 +16,9 @@ class Employee(db.Model):
     email = db.Column(db.String(255), nullable = False)
     telephone = db.Column(db.String(32), nullable = False)
 
+    employee_type_uid = db.Column(db.Integer(), db.ForeignKey('employee_type.uid'), nullable = False)
+    employee_type = db.relationship('EmployeeType')
+
 class EmployeeTypeSchema(Schema):
     uid = fields.Int(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
     type = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 50) ])
@@ -29,6 +32,9 @@ class EmployeeSchema(Schema):
     name = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 70) ])
     email = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 255) ]) # More validation should be put in place here,
     telephone = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 32) ]) # but let's keep it out of scope to simplify.
+
+    employee_type_uid = fields.Int(required = True, validate = [ FkReference(EmployeeType) ], load_only = True)
+    employee_type = fields.Nested(EmployeeTypeSchema, required = True, dump_only = True)
 
     @post_load
     def dict_to_object(self, data: Mapping[str, Any], **kwargs):
@@ -74,7 +80,7 @@ class EmployeeTypeItem(MethodView):
             db.session.commit()
 
         except IntegrityError:
-             abort(409, errors = {
+            abort(409, errors = {
                 'json': {
                     'type': [ 'Value must be unique.' ]
                 }
@@ -84,6 +90,9 @@ class EmployeeTypeItem(MethodView):
 
     @bp.response(204)
     def delete(self, id: int):
+        if db.session.query(Employee.query.filter(Employee.employee_type_uid == id).exists()).scalar():
+            abort(409, message = 'Employee type still has attached employees.')
+
         EmployeeType.query.filter(EmployeeType.uid == id).delete()
         db.session.commit()
 
@@ -115,6 +124,7 @@ class EmployeeItem(MethodView):
         existing_employee_type.name = employee_type.name
         existing_employee_type.email = employee_type.email
         existing_employee_type.telephone = employee_type.telephone
+        existing_employee_type.employee_type_uid = employee_type.employee_type_uid
         db.session.commit()
 
         return existing_employee_type

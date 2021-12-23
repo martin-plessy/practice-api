@@ -341,6 +341,22 @@ def test_delete_id_404(client: FlaskClient):
     assert_no_content(
         client.delete('/employee-types/404'))
 
+def test_delete_protects_employee_type_with_employees(client: FlaskClient):
+    client.post('/employee-types/', json = {
+        'type': 'T'
+    })
+
+    client.post('/employees/', json = {
+        'name': 'N',
+        'email': 'e@mail.com',
+        'telephone': '07123 456789',
+        'employee_type_uid': 1
+    })
+
+    assert_conflict(
+        client.delete('/employee-types/1'),
+        expected_message = 'Employee type still has attached employees.')
+
 def test_delete(client: FlaskClient):
     client.post('/employee-types/', json = {
         'type': 'A'

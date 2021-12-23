@@ -10,21 +10,25 @@ def assert_no_content(response: test.TestResponse):
     assert response.status_code == 204
     assert response.data == b''
 
-def assert_bad_request(response: test.TestResponse, expected_validation_messages: Optional[Dict[str, str]] = None):
-    _assert_err(response, 400, 'Bad Request', expected_validation_messages)
+def assert_bad_request(response: test.TestResponse, expected_message: Optional[str] = None, expected_validation_messages: Optional[Dict[str, str]] = None):
+    _assert_err(response, 400, 'Bad Request', expected_message, expected_validation_messages)
 
-def assert_conflict(response: test.TestResponse, expected_validation_messages: Optional[Dict[str, str]] = None):
-    _assert_err(response, 409, 'Conflict', expected_validation_messages)
+def assert_conflict(response: test.TestResponse, expected_message: Optional[str] = None, expected_validation_messages: Optional[Dict[str, str]] = None):
+    _assert_err(response, 409, 'Conflict', expected_message, expected_validation_messages)
 
 def assert_not_found(response: test.TestResponse):
     assert response.status_code == 404
 
-def _assert_err(response: test.TestResponse, expected_code: int, expected_status: str, expected_validation_messages: Optional[Dict[str, str]] = None):
+def _assert_err(response: test.TestResponse, expected_code: int, expected_status: str, expected_message: Optional[str] = None, expected_validation_messages: Optional[Dict[str, str]] = None):
     assert response.status_code == expected_code
     assert response.mimetype == 'application/json'
 
     assert response.json['code'] == expected_code
     assert response.json['status'] == expected_status
 
-    for field, message in expected_validation_messages.items():
-        assert response.json['errors']['json'][field] == [ message ]
+    if expected_message is not None:
+        assert response.json['message'] == expected_message
+
+    if expected_validation_messages is not None:
+        for field, message in expected_validation_messages.items():
+            assert response.json['errors']['json'][field] == [ message ]
