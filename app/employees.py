@@ -46,7 +46,7 @@ bp = ApiBlueprint('Employees', __name__)
 class EmployeeTypeCollection(MethodView):
     @bp.response(200, EmployeeTypeSchema(many = True))
     def get(self):
-        return EmployeeType.query.all() # List[EmployeeType]
+        return db.session.query(EmployeeType).all()
 
     @bp.arguments(EmployeeTypeSchema)
     @bp.response(201, EmployeeTypeSchema)
@@ -68,12 +68,12 @@ class EmployeeTypeCollection(MethodView):
 class EmployeeTypeItem(MethodView):
     @bp.response(200, EmployeeTypeSchema)
     def get(self, id: int):
-        return EmployeeType.query.get_or_404(id) # EmployeeType
+        return db.session.query(EmployeeType).get_or_404(id)
 
     @bp.arguments(EmployeeTypeSchema)
     @bp.response(200, EmployeeTypeSchema)
     def put(self, employee_type: EmployeeType, id: int):
-        existing_employee_type: EmployeeType = EmployeeType.query.get_or_404(id)
+        existing_employee_type: EmployeeType = db.session.query(EmployeeType).get_or_404(id)
 
         try:
             existing_employee_type.type = employee_type.type
@@ -90,17 +90,17 @@ class EmployeeTypeItem(MethodView):
 
     @bp.response(204)
     def delete(self, id: int):
-        if db.session.query(Employee.query.filter(Employee.employee_type_uid == id).exists()).scalar():
+        if db.session.query(db.session.query(Employee).filter(Employee.employee_type_uid == id).exists()).scalar():
             abort(409, message = 'Employee type still has attached employees.')
 
-        EmployeeType.query.filter(EmployeeType.uid == id).delete()
+        db.session.query(EmployeeType).filter(EmployeeType.uid == id).delete()
         db.session.commit()
 
 @bp.route('/employees/')
 class EmployeeCollection(MethodView):
     @bp.response(200, EmployeeSchema(many = True))
     def get(self):
-        return Employee.query.all() # List[Employee]
+        return db.session.query(Employee).all()
 
     @bp.arguments(EmployeeSchema)
     @bp.response(201, EmployeeSchema)
@@ -114,12 +114,12 @@ class EmployeeCollection(MethodView):
 class EmployeeItem(MethodView):
     @bp.response(200, EmployeeSchema)
     def get(self, id: int):
-        return Employee.query.get_or_404(id) # Employee
+        return db.session.query(Employee).get_or_404(id)
 
     @bp.arguments(EmployeeSchema)
     @bp.response(200, EmployeeSchema)
     def put(self, employee_type: Employee, id: int):
-        existing_employee_type: Employee = Employee.query.get_or_404(id)
+        existing_employee_type: Employee = db.session.query(Employee).get_or_404(id)
 
         existing_employee_type.name = employee_type.name
         existing_employee_type.email = employee_type.email
@@ -131,5 +131,5 @@ class EmployeeItem(MethodView):
 
     @bp.response(204)
     def delete(self, id: int):
-        Employee.query.filter(Employee.uid == id).delete()
+        db.session.query(Employee).filter(Employee.uid == id).delete()
         db.session.commit()
