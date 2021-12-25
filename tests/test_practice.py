@@ -28,14 +28,14 @@ def test_post_invalid_1(given: Given, when: When, then: Then):
         'name': 42,
         'address': 42,
         'telephone': 42,
-        # 'employee_type_uid': 'frog'
+        'manager_uid': 'frog'
     })
     then.bad_request_400()
     then.validation_messages({
         'name': 'Not a valid string.',
         'address': 'Not a valid string.',
         'telephone': 'Not a valid string.',
-        # 'employee_type_uid': 'Not a valid integer.'
+        'manager_uid': 'Not a valid integer.'
     })
 
 def test_post_invalid_2(given: Given, when: When, then: Then):
@@ -43,14 +43,14 @@ def test_post_invalid_2(given: Given, when: When, then: Then):
         'name': '',
         'address': '',
         'telephone': '',
-        # 'employee_type_uid': 404
+        'manager_uid': 404
     })
     then.bad_request_400()
     then.validation_messages({
         'name': 'Length must be between 1 and 70.',
         'address': 'Length must be between 1 and 255.',
         'telephone': 'Length must be between 1 and 32.',
-        # 'employee_type_uid': 'Not referencing an existing resource.'
+        'manager_uid': 'Not referencing an existing resource.'
     })
 
 def test_post_invalid_3(given: Given, when: When, then: Then):
@@ -58,14 +58,14 @@ def test_post_invalid_3(given: Given, when: When, then: Then):
         'name': None,
         'address': None,
         'telephone': None,
-        # 'employee_type_uid': None
+        'manager_uid': None
     })
     then.bad_request_400()
     then.validation_messages({
         'name': 'Field may not be null.',
         'address': 'Field may not be null.',
         'telephone': 'Field may not be null.',
-        # 'employee_type_uid': 'Field may not be null.'
+        # 'manager_uid' is optional.
     })
 
 def test_post_invalid_4(given: Given, when: When, then: Then):
@@ -76,7 +76,7 @@ def test_post_invalid_4(given: Given, when: When, then: Then):
         'name': 'Missing data for required field.',
         'address': 'Missing data for required field.',
         'telephone': 'Missing data for required field.',
-        # 'employee_type_uid': 'Missing data for required field.'
+        # 'manager_uid' is optional.
     })
 
 def test_post_invalid_5(given: Given, when: When, then: Then):
@@ -84,14 +84,13 @@ def test_post_invalid_5(given: Given, when: When, then: Then):
         'name': 'X' * 71,
         'address': 'X' * 256,
         'telephone': 'X' * 33,
-        # 'employee_type_uid': 404
     })
     then.bad_request_400()
     then.validation_messages({
         'name': 'Length must be between 1 and 70.',
         'address': 'Length must be between 1 and 255.',
         'telephone': 'Length must be between 1 and 32.',
-        # 'employee_type_uid': 'Not referencing an existing resource.'
+        # 'manager_uid' is optional.
     })
 
 def test_post_invalid_uid_extra(given: Given, when: When, then: Then):
@@ -100,36 +99,55 @@ def test_post_invalid_uid_extra(given: Given, when: When, then: Then):
         'name': 'P',
         'address': '1 Unit Square, Exeter',
         'telephone': '07 999 000001',
-        # 'employee_type_uid': 404
     })
     then.bad_request_400()
     then.validation_messages({
         'uid': 'Unknown field.',
-        # 'employee_type_uid': 'Not referencing an existing resource.'
+        # 'manager_uid' is optional.
     })
 
-# def test_post_invalid_employee_type_extra(given: Given, when: When, then: Then):
-#     when.post_practice({
-#         'name': 'P',
-#         'address': '1 Unit Square, Exeter',
-#         'telephone': '07 999 000001',
-#         'employee_type': {
-#             'type': 'T'
-#         }
-#     })
-#     then.bad_request_400()
-#     then.validation_messages({
-#         'employee_type': 'Unknown field.'
-#     })
-
-def test_post(given: Given, when: When, then: Then):
-    # employee_type = given.an_employee_type()
+def test_post_invalid_manager_extra(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
 
     when.post_practice({
         'name': 'P',
         'address': '1 Unit Square, Exeter',
         'telephone': '07 999 000001',
-        # 'employee_type_uid': employee_type['uid']
+        'manager': {
+            'name': 'A',
+            'email': 'a@unit.test',
+            'telephone': '07 999 000002',
+            'manager_uid': employee_type['uid']
+        }
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'manager': 'Unknown field.'
+    })
+
+def test_post_without_manager(given: Given, when: When, then: Then):
+    when.post_practice({
+        'name': 'P',
+        'address': '1 Unit Square, Exeter',
+        'telephone': '07 999 000001'
+    })
+    then.created_201()
+    then.json({
+        'uid': 1,
+        'name': 'P',
+        'address': '1 Unit Square, Exeter',
+        'telephone': '07 999 000001'
+    })
+
+def test_post_with_manager(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
+    employee = given.an_employee(of_type = employee_type['uid'])
+
+    when.post_practice({
+        'name': 'P',
+        'address': '1 Unit Square, Exeter',
+        'telephone': '07 999 000001',
+        'manager_uid': employee['uid']
     })
     then.created_201()
     then.json({
@@ -137,15 +155,15 @@ def test_post(given: Given, when: When, then: Then):
         'name': 'P',
         'address': '1 Unit Square, Exeter',
         'telephone': '07 999 000001',
-        # 'employee_type': employee_type
+        'manager': employee
     })
 
 def test_post_get_multiple(given: Given, when: When, then: Then):
-    # first_type = given.an_employee_type()
-    # second_type = given.an_employee_type()
+    manager_type = given.an_employee_type()
+    manager = given.an_employee(of_type = manager_type['uid'])
 
     first = given.a_practice()
-    second = given.a_practice()
+    second = given.a_practice(with_manager = manager['uid'])
 
     when.get_all_practices()
     then.ok_200()
@@ -166,87 +184,73 @@ def test_post_get_multiple(given: Given, when: When, then: Then):
 # -----------------------------------------------------------------------------
 
 def test_put_id_nonint(given: Given, when: When, then: Then):
-    # employee_type = given.an_employee_type()
-
     when.put_practice('frog', {
         'name': 'P',
         'address': '1 Unit Square, Exeter',
-        'telephone': '07 999 000001',
-        # 'employee_type_uid': employee_type['uid']
+        'telephone': '07 999 000001'
     })
     then.not_found_404()
 
 def test_put_id_404(given: Given, when: When, then: Then):
-    # employee_type = given.an_employee_type()
-
     when.put_practice('404', {
         'name': 'P',
         'address': '1 Unit Square, Exeter',
-        'telephone': '07 999 000001',
-        # 'employee_type_uid': employee_type['uid']
+        'telephone': '07 999 000001'
     })
     then.not_found_404()
 
 def test_put_invalid_1(given: Given, when: When, then: Then):
-    # employee_type = given.an_employee_type()
-    # employee = given.an_employee(of_type = employee_type['uid'])
     practice = given.a_practice()
 
     when.put_practice(practice['uid'], {
         'name': 42,
         'address': 42,
         'telephone': 42,
-        # 'employee_type_uid': 'frog'
+        'manager_uid': 'frog'
     })
     then.bad_request_400()
     then.validation_messages({
         'name': 'Not a valid string.',
         'address': 'Not a valid string.',
         'telephone': 'Not a valid string.',
-        # 'employee_type_uid': 'Not a valid integer.'
+        'manager_uid': 'Not a valid integer.'
     })
 
 def test_put_invalid_2(given: Given, when: When, then: Then):
-    # employee_type = given.an_employee_type()
-    # employee = given.an_employee(of_type = employee_type['uid'])
     practice = given.a_practice()
 
     when.put_practice(practice['uid'], {
         'name': '',
         'address': '',
         'telephone': '',
-        # 'employee_type_uid': 404
+        'manager_uid': 404
     })
     then.bad_request_400()
     then.validation_messages({
         'name': 'Length must be between 1 and 70.',
         'address': 'Length must be between 1 and 255.',
         'telephone': 'Length must be between 1 and 32.',
-        # 'employee_type_uid': 'Not referencing an existing resource.'
+        'manager_uid': 'Not referencing an existing resource.'
     })
 
 def test_put_invalid_3(given: Given, when: When, then: Then):
-    # employee_type = given.an_employee_type()
-    # employee = given.an_employee(of_type = employee_type['uid'])
     practice = given.a_practice()
 
     when.put_practice(practice['uid'], {
         'name': None,
         'address': None,
         'telephone': None,
-        # 'employee_type_uid': None
+        'manager_uid': None
     })
     then.bad_request_400()
     then.validation_messages({
         'name': 'Field may not be null.',
         'address': 'Field may not be null.',
         'telephone': 'Field may not be null.',
-        # 'employee_type_uid': 'Field may not be null.'
+        # 'manager_uid' is optional.
     })
 
 def test_put_invalid_4(given: Given, when: When, then: Then):
-    # employee_type = given.an_employee_type()
-    # employee = given.an_employee(of_type = employee_type['uid'])
     practice = given.a_practice()
 
     when.put_practice(practice['uid'], {
@@ -256,57 +260,53 @@ def test_put_invalid_4(given: Given, when: When, then: Then):
         'name': 'Missing data for required field.',
         'address': 'Missing data for required field.',
         'telephone': 'Missing data for required field.',
-        # 'employee_type_uid': 'Missing data for required field.'
+        # 'manager_uid' is optional.
     })
 
 def test_put_invalid_5(given: Given, when: When, then: Then):
-    # employee_type = given.an_employee_type()
-    # employee = given.an_employee(of_type = employee_type['uid'])
     practice = given.a_practice()
 
     when.put_practice(practice['uid'], {
         'name': 'X' * 71,
         'address': 'X' * 256,
-        'telephone': 'X' * 33,
-        # 'employee_type_uid': 404
+        'telephone': 'X' * 33
     })
     then.bad_request_400()
     then.validation_messages({
         'name': 'Length must be between 1 and 70.',
         'address': 'Length must be between 1 and 255.',
         'telephone': 'Length must be between 1 and 32.',
-        # 'employee_type_uid': 'Not referencing an existing resource.'
+        # 'manager_uid' is optional.
     })
 
-# def test_put_invalid_employee_type_extra(given: Given, when: When, then: Then):
-#     employee_type = given.an_employee_type()
-#     employee = given.an_employee(of_type = employee_type['uid'])
-#     practice = given.a_practice()
-#
-#     when.put_practice(practice['uid'], {
-#         'name': 'P',
-#         'address': '1 Unit Square, Exeter',
-#         'telephone': '07 999 000001',
-#         'employee_type': {
-#             'type': 'T'
-#         }
-#     })
-#     then.bad_request_400()
-#     then.validation_messages({
-#         'employee_type': 'Unknown field.'
-#     })
+def test_put_invalid_manager_extra(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
+    practice = given.a_practice()
+
+    when.put_practice(practice['uid'], {
+        'name': 'P',
+        'address': '1 Unit Square, Exeter',
+        'telephone': '07 999 000001',
+        'manager': {
+            'name': 'A',
+            'email': 'a@unit.test',
+            'telephone': '07 999 000002',
+            'employee_type_uid': employee_type['uid']
+        }
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'manager': 'Unknown field.'
+    })
 
 def test_put_invalid_uid_extra(given: Given, when: When, then: Then):
-    # employee_type = given.an_employee_type()
-    # employee = given.an_employee(of_type = employee_type['uid'])
     practice = given.a_practice()
 
     when.put_practice(practice['uid'], {
         'uid': 42,
         'name': 'P',
         'address': '1 Unit Square, Exeter',
-        'telephone': '07 999 000001',
-        # 'employee_type_uid': employee_type['uid']
+        'telephone': '07 999 000001'
     })
     then.bad_request_400()
     then.validation_messages({
@@ -314,67 +314,82 @@ def test_put_invalid_uid_extra(given: Given, when: When, then: Then):
     })
 
 def test_put(given: Given, when: When, then: Then):
-#     first_type = given.an_employee_type()
-#     second_type = given.an_employee_type()
-#
-#     employee = given.an_employee(of_type = first_type['uid'])
-
     practice = given.a_practice()
 
     when.put_practice(practice['uid'], {
         'name': 'P',
         'address': '1 Unit Square, Exeter',
-        'telephone': '07 999 000001',
-        # 'employee_type_uid': second_type['uid']
+        'telephone': '07 999 000001'
     })
     then.ok_200()
     then.json({
         'uid': practice['uid'],
         'name': 'P',
         'address': '1 Unit Square, Exeter',
-        'telephone': '07 999 000001',
-        # 'employee_type': second_type
+        'telephone': '07 999 000001'
     })
 
 def test_put_get_multiple(given: Given, when: When, then: Then):
-#     first_type = given.an_employee_type()
-#     second_type = given.an_employee_type()
-#
-#     first_employee = given.an_employee(of_type = first_type['uid'])
-#     second_employee = given.an_employee(of_type = second_type['uid'])
+    manager_type = given.an_employee_type()
 
-    first_practice = given.a_practice()
+    first_manager = given.an_employee(of_type = manager_type['uid'])
+    second_manager = given.an_employee(of_type = manager_type['uid'])
+
+    first_practice = given.a_practice(with_manager = first_manager['uid'])
     second_practice = given.a_practice()
 
-    when.put_practice(second_practice['uid'], {
+    when.put_practice(first_practice['uid'], {
         'name': 'P',
         'address': '1 Unit Square, Exeter',
         'telephone': '07 999 000001',
-        # 'employee_type_uid': first_type['uid']
+        'manager_uid': None
+    })
+    then.ok_200()
+
+    when.put_practice(second_practice['uid'], {
+        'name': 'Q',
+        'address': '2 Unit Square, Exeter',
+        'telephone': '07 999 000002',
+        'manager_uid': second_manager['uid']
+    })
+    then.ok_200()
+
+    when.get_all_practices()
+    then.ok_200()
+    then.json([
+        {
+            'uid': first_practice['uid'],
+            'name': 'P',
+            'address': '1 Unit Square, Exeter',
+            'telephone': '07 999 000001'
+        },
+        {
+            'uid': second_practice['uid'],
+            'name': 'Q',
+            'address': '2 Unit Square, Exeter',
+            'telephone': '07 999 000002',
+            'manager': second_manager
+        }
+    ])
+
+    when.get_practice(first_practice['uid'])
+    then.ok_200()
+    then.json({
+        'uid': first_practice['uid'],
+        'name': 'P',
+        'address': '1 Unit Square, Exeter',
+        'telephone': '07 999 000001'
     })
 
     when.get_practice(second_practice['uid'])
     then.ok_200()
     then.json({
         'uid': second_practice['uid'],
-        'name': 'P',
-        'address': '1 Unit Square, Exeter',
-        'telephone': '07 999 000001',
-        # 'employee_type': first_type
+        'name': 'Q',
+        'address': '2 Unit Square, Exeter',
+        'telephone': '07 999 000002',
+        'manager': second_manager
     })
-
-    when.get_all_practices()
-    then.ok_200()
-    then.json([
-        first_practice,
-        {
-            'uid': second_practice['uid'],
-            'name': 'P',
-            'address': '1 Unit Square, Exeter',
-            'telephone': '07 999 000001',
-            # 'employee_type': first_type
-        }
-    ])
 
 # DELETE /practices/<int:id>
 # -----------------------------------------------------------------------------
@@ -387,9 +402,7 @@ def test_delete_id_404(given: Given, when: When, then: Then):
     when.delete_practice('404')
     then.no_content_204() # Idempotent!
 
-def test_delete(given: Given, when: When, then: Then):
-    # employee_type = given.an_employee_type()
-
+def test_delete_without_manager(given: Given, when: When, then: Then):
     first_practice = given.a_practice()
     second_practice = given.a_practice()
 
@@ -411,3 +424,23 @@ def test_delete(given: Given, when: When, then: Then):
 
     when.get_practice(first_practice['uid'])
     then.not_found_404()
+
+def test_delete_with_manager(given: Given, when: When, then: Then):
+    manager_type = given.an_employee_type()
+    manager = given.an_employee(of_type = manager_type['uid'])
+    practice = given.a_practice(with_manager = manager['uid'])
+
+    when.get_practice(practice['uid'])
+    then.ok_200()
+
+    when.get_employee(manager['uid'])
+    then.ok_200()
+
+    when.delete_practice(practice['uid'])
+    then.no_content_204()
+
+    when.get_practice(practice['uid'])
+    then.not_found_404()
+
+    when.get_employee(manager['uid'])
+    then.ok_200()

@@ -1,8 +1,8 @@
-from app.api import ApiBlueprint
+from app.api import ApiBlueprint, ApiSchema
 from app.db import FkReference, db
 from flask.views import MethodView
 from flask_smorest import abort
-from marshmallow import fields, post_load, Schema, validate
+from marshmallow import fields, post_load, validate
 from sqlalchemy.exc import IntegrityError
 from typing import Any, Mapping
 
@@ -29,42 +29,42 @@ class Practice(db.Model):
     telephone = db.Column(db.String(32), nullable = False)
     # Removing the branch to keep it simpler here...
 
-    # manager_uid = db.Column(db.Integer(), db.ForeignKey('employee.uid'), nullable = True)
-    # manager = db.relationship('Employee')
+    manager_uid = db.Column(db.Integer(), db.ForeignKey('employee.uid'), nullable = True)
+    manager = db.relationship('Employee')
 
-class EmployeeTypeSchema(Schema):
-    uid = fields.Int(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
-    type = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 50) ])
+class EmployeeTypeSchema(ApiSchema):
+    uid = fields.Integer(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
+    type = fields.String(required = True, validate = [ validate.Length(min = 1, max = 50) ])
 
     @post_load
     def dict_to_object(self, data: Mapping[str, Any], **kwargs):
         return EmployeeType(**data)
 
-class EmployeeSchema(Schema):
-    uid = fields.Int(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
-    name = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 70) ])
-    email = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 255) ]) # More validation should be put in place here,
-    telephone = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 32) ]) # but let's keep it out of scope to simplify.
+class EmployeeSchema(ApiSchema):
+    uid = fields.Integer(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
+    name = fields.String(required = True, validate = [ validate.Length(min = 1, max = 70) ])
+    email = fields.String(required = True, validate = [ validate.Length(min = 1, max = 255) ]) # More validation should be put in place here,
+    telephone = fields.String(required = True, validate = [ validate.Length(min = 1, max = 32) ]) # but let's keep it out of scope to simplify.
 
-    employee_type_uid = fields.Int(required = True, validate = [ FkReference(EmployeeType) ], load_only = True)
+    employee_type_uid = fields.Integer(required = True, validate = [ FkReference(EmployeeType) ], load_only = True)
     employee_type = fields.Nested('EmployeeTypeSchema', required = True, dump_only = True)
 
-    # practice_uid = fields.Int(required = True, validate = [ FkReference(Practice) ], load_only = True)
+    # practice_uid = fields.Integer(required = True, validate = [ FkReference(Practice) ], load_only = True)
     # practice = fields.Nested('PracticeSchema', required = True, dump_only = True)
 
     @post_load
     def dict_to_object(self, data: Mapping[str, Any], **kwargs):
         return Employee(**data)
 
-class PracticeSchema(Schema):
-    uid = fields.Int(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
-    name = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 70) ])
-    address = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 255) ])
-    telephone = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 32) ])
+class PracticeSchema(ApiSchema):
+    uid = fields.Integer(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
+    name = fields.String(required = True, validate = [ validate.Length(min = 1, max = 70) ])
+    address = fields.String(required = True, validate = [ validate.Length(min = 1, max = 255) ])
+    telephone = fields.String(required = True, validate = [ validate.Length(min = 1, max = 32) ])
     # Removing the branch to keep it simpler here...
 
-    # manager_uid = fields.Int(required = False, validate = [ FkReference(Employee) ], load_only = True)
-    # manager = fields.Nested('EmployeeSchema', required = False, dump_only = True)
+    manager_uid = fields.Integer(required = False, validate = [ FkReference(Employee) ], load_only = True, load_default = None)
+    manager = fields.Nested('EmployeeSchema', required = False, dump_only = True, dump_default = None)
 
     @post_load
     def dict_to_object(self, data: Mapping[str, Any], **kwargs):
@@ -192,6 +192,7 @@ class PracticeItem(MethodView):
         existing_practice.name = practice.name
         existing_practice.address = practice.address
         existing_practice.telephone = practice.telephone
+        existing_practice.manager_uid = practice.manager_uid
         db.session.commit()
 
         return existing_practice

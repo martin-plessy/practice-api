@@ -30,13 +30,14 @@ class Given:
 
         return response.json
 
-    def a_practice(self) -> Dict[str, Any]:
+    def a_practice(self, with_manager: Optional[Any] = None) -> Dict[str, Any]:
         self._practice_counter = self._practice_counter + 1
 
         response = self._client.post('/practices/', json = {
             'name': f'Practice #{ self._practice_counter }',
             'address': f'{ self._practice_counter } Test Street, Exeter',
-            'telephone': f'07 123 { self._practice_counter :06}'
+            'telephone': f'07 234 { self._practice_counter :06}',
+            'manager_uid': with_manager
         })
 
         return response.json
