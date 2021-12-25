@@ -299,9 +299,7 @@ def test_put_invalid_uid_extra(given: Given, when: When, then: Then):
         'name': 'A',
         'email': 'a@unit.test',
         'telephone': '07 999 000001',
-        'employee_type': {
-            'type': 'T'
-        }
+        'employee_type_uid': employee_type['uid']
     })
     then.bad_request_400()
     then.validation_messages({
@@ -358,7 +356,7 @@ def test_put_get_multiple(given: Given, when: When, then: Then):
     then.json([
         first_employee,
         {
-           'uid': second_employee['uid'],
+            'uid': second_employee['uid'],
             'name': 'A',
             'email': 'a@unit.test',
             'telephone': '07 999 000001',

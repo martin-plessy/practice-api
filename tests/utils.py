@@ -7,6 +7,7 @@ class Given:
         self._client = client
         self._employee_type_counter = 0
         self._employee_counter = 0
+        self._practice_counter = 0
 
     def an_employee_type(self) -> Dict[str, Any]:
         self._employee_type_counter = self._employee_type_counter + 1
@@ -25,6 +26,17 @@ class Given:
             'email': f'employee-n{ self._employee_counter }@unit.test',
             'telephone': f'07 123 { self._employee_counter :06}',
             'employee_type_uid': of_type
+        })
+
+        return response.json
+
+    def a_practice(self) -> Dict[str, Any]:
+        self._practice_counter = self._practice_counter + 1
+
+        response = self._client.post('/practices/', json = {
+            'name': f'Practice #{ self._practice_counter }',
+            'address': f'{ self._practice_counter } Test Street, Exeter',
+            'telephone': f'07 123 { self._practice_counter :06}'
         })
 
         return response.json
@@ -72,6 +84,24 @@ class When:
 
     def delete_employee(self, uid: Any):
         self._last_response = self._client.delete(f'/employees/{ uid }')
+
+    # Practices
+    # -------------------------------------------------------------------------
+
+    def get_all_practices(self):
+        self._last_response = self._client.get('/practices/')
+
+    def post_practice(self, json: Dict[str, Any]):
+        self._last_response = self._client.post('/practices/', json = json)
+
+    def get_practice(self, uid: Any):
+        self._last_response = self._client.get(f'/practices/{ uid }')
+
+    def put_practice(self, uid: Any, json: Dict[str, Any]):
+        self._last_response = self._client.put(f'/practices/{ uid }', json = json)
+
+    def delete_practice(self, uid: Any):
+        self._last_response = self._client.delete(f'/practices/{ uid }')
 
 class Then:
     def __init__(self, when: When) -> None:

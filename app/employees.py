@@ -19,6 +19,19 @@ class Employee(db.Model):
     employee_type_uid = db.Column(db.Integer(), db.ForeignKey('employee_type.uid'), nullable = False)
     employee_type = db.relationship('EmployeeType')
 
+    # practice_uid = db.Column(db.Integer(), db.ForeignKey('practice.uid'), nullable = False)
+    # practice = db.relationship('Practice')
+
+class Practice(db.Model):
+    uid = db.Column(db.Integer(), primary_key = True)
+    name = db.Column(db.String(70), nullable = False)
+    address = db.Column(db.String(255), nullable = False)
+    telephone = db.Column(db.String(32), nullable = False)
+    # Removing the branch to keep it simpler here...
+
+    # manager_uid = db.Column(db.Integer(), db.ForeignKey('employee.uid'), nullable = True)
+    # manager = db.relationship('Employee')
+
 class EmployeeTypeSchema(Schema):
     uid = fields.Int(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
     type = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 50) ])
@@ -34,11 +47,28 @@ class EmployeeSchema(Schema):
     telephone = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 32) ]) # but let's keep it out of scope to simplify.
 
     employee_type_uid = fields.Int(required = True, validate = [ FkReference(EmployeeType) ], load_only = True)
-    employee_type = fields.Nested(EmployeeTypeSchema, required = True, dump_only = True)
+    employee_type = fields.Nested('EmployeeTypeSchema', required = True, dump_only = True)
+
+    # practice_uid = fields.Int(required = True, validate = [ FkReference(Practice) ], load_only = True)
+    # practice = fields.Nested('PracticeSchema', required = True, dump_only = True)
 
     @post_load
     def dict_to_object(self, data: Mapping[str, Any], **kwargs):
         return Employee(**data)
+
+class PracticeSchema(Schema):
+    uid = fields.Int(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
+    name = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 70) ])
+    address = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 255) ])
+    telephone = fields.Str(required = True, validate = [ validate.Length(min = 1, max = 32) ])
+    # Removing the branch to keep it simpler here...
+
+    # manager_uid = fields.Int(required = False, validate = [ FkReference(Employee) ], load_only = True)
+    # manager = fields.Nested('EmployeeSchema', required = False, dump_only = True)
+
+    @post_load
+    def dict_to_object(self, data: Mapping[str, Any], **kwargs):
+        return Practice(**data)
 
 bp = ApiBlueprint('Employees', __name__)
 
@@ -104,11 +134,11 @@ class EmployeeCollection(MethodView):
 
     @bp.arguments(EmployeeSchema)
     @bp.response(201, EmployeeSchema)
-    def post(self, employee_type: Employee):
-        db.session.add(employee_type)
+    def post(self, employee: Employee):
+        db.session.add(employee)
         db.session.commit()
 
-        return employee_type
+        return employee
 
 @bp.route('/employees/<int:id>')
 class EmployeeItem(MethodView):
@@ -118,18 +148,55 @@ class EmployeeItem(MethodView):
 
     @bp.arguments(EmployeeSchema)
     @bp.response(200, EmployeeSchema)
-    def put(self, employee_type: Employee, id: int):
-        existing_employee_type: Employee = db.session.query(Employee).get_or_404(id)
+    def put(self, employee: Employee, id: int):
+        existing_employee: Employee = db.session.query(Employee).get_or_404(id)
 
-        existing_employee_type.name = employee_type.name
-        existing_employee_type.email = employee_type.email
-        existing_employee_type.telephone = employee_type.telephone
-        existing_employee_type.employee_type_uid = employee_type.employee_type_uid
+        existing_employee.name = employee.name
+        existing_employee.email = employee.email
+        existing_employee.telephone = employee.telephone
+        existing_employee.employee_type_uid = employee.employee_type_uid
         db.session.commit()
 
-        return existing_employee_type
+        return existing_employee
 
     @bp.response(204)
     def delete(self, id: int):
         db.session.query(Employee).filter(Employee.uid == id).delete()
+        db.session.commit()
+
+@bp.route('/practices/')
+class PracticeCollection(MethodView):
+    @bp.response(200, PracticeSchema(many = True))
+    def get(self):
+        return db.session.query(Practice).all()
+
+    @bp.arguments(PracticeSchema)
+    @bp.response(201, PracticeSchema)
+    def post(self, practice: Practice):
+        db.session.add(practice)
+        db.session.commit()
+
+        return practice
+
+@bp.route('/practices/<int:id>')
+class PracticeItem(MethodView):
+    @bp.response(200, PracticeSchema)
+    def get(self, id: int):
+        return db.session.query(Practice).get_or_404(id)
+
+    @bp.arguments(PracticeSchema)
+    @bp.response(200, PracticeSchema)
+    def put(self, practice: Practice, id: int):
+        existing_practice: Practice = db.session.query(Practice).get_or_404(id)
+
+        existing_practice.name = practice.name
+        existing_practice.address = practice.address
+        existing_practice.telephone = practice.telephone
+        db.session.commit()
+
+        return existing_practice
+
+    @bp.response(204)
+    def delete(self, id: int):
+        db.session.query(Practice).filter(Practice.uid == id).delete()
         db.session.commit()
