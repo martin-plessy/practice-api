@@ -1,8 +1,11 @@
+from flask.app import Flask
+from flask.testing import FlaskClient
 from app import create_app
 from app.db import create_db
 from os import close, unlink
 from pytest import fixture
 from tempfile import mkstemp
+from tests.utils import Given, Then, When
 
 @fixture
 def app():
@@ -22,9 +25,17 @@ def app():
     unlink(db_file_path)
 
 @fixture
-def client(app):
+def client(app: Flask):
     return app.test_client()
 
 @fixture
-def runner(app):
-    return app.test_cli_runner()
+def given(client: FlaskClient):
+    return Given(client)
+
+@fixture
+def when(client: FlaskClient):
+    return When(client)
+
+@fixture
+def then(when: When):
+    return Then(when)

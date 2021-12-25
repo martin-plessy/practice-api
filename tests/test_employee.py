@@ -1,553 +1,403 @@
-from flask.testing import FlaskClient
-from app.employees import Employee, EmployeeType
-from tests.utils import assert_bad_request, assert_conflict, assert_no_content, assert_not_found, assert_json, assert_not_found
+from tests.utils import Given, Then, When
 
 # GET /employees
 # -----------------------------------------------------------------------------
 
-def test_get(client: FlaskClient):
-    assert_json(
-        client.get('/employees/'),
-        expected_code = 200,
-        expected_body = [
-        ])
+def test_get(given: Given, when: When, then: Then):
+    when.get_all_employees()
+    then.ok_200()
+    then.json([
+    ])
 
 # GET /employees/<int:id>
 # -----------------------------------------------------------------------------
 
-def test_get_id_nonint(client: FlaskClient):
-    assert_not_found(
-        client.get('/employees/frog'))
+def test_get_id_nonint(given: Given, when: When, then: Then):
+    when.get_employee('frog')
+    then.not_found_404()
 
-def test_get_id_404(client: FlaskClient):
-    assert_not_found(
-        client.get('/employees/404'))
+def test_get_id_404(given: Given, when: When, then: Then):
+    when.get_employee('404')
+    then.not_found_404()
 
 # POST /employees
 # -----------------------------------------------------------------------------
 
-def test_post_invalid(client: FlaskClient):
-    assert_bad_request(
-        client.post('/employees/', json = {
-            'name': 42,
-            'email': 42,
-            'telephone': 42,
-            'employee_type_uid': 'frog'
-        }),
-        expected_validation_messages = {
-            'name': 'Not a valid string.',
-            'email': 'Not a valid string.',
-            'telephone': 'Not a valid string.',
-            'employee_type_uid': 'Not a valid integer.'
-        })
-
-    assert_bad_request(
-        client.post('/employees/', json = {
-            'name': '',
-            'email': '',
-            'telephone': '',
-            'employee_type_uid': 404
-        }),
-        expected_validation_messages = {
-            'name': 'Length must be between 1 and 70.',
-            'email': 'Length must be between 1 and 255.',
-            'telephone': 'Length must be between 1 and 32.',
-            'employee_type_uid': 'Not referencing an existing resource.'
-        })
-
-    assert_bad_request(
-        client.post('/employees/', json = {
-            'name': None,
-            'email': None,
-            'telephone': None,
-            'employee_type_uid': None
-        }),
-        expected_validation_messages = {
-            'name': 'Field may not be null.',
-            'email': 'Field may not be null.',
-            'telephone': 'Field may not be null.',
-            'employee_type_uid': 'Field may not be null.'
-        })
-
-    assert_bad_request(
-        client.post('/employees/', json = {
-        }),
-        expected_validation_messages = {
-            'name': 'Missing data for required field.',
-            'email': 'Missing data for required field.',
-            'telephone': 'Missing data for required field.',
-            'employee_type_uid': 'Missing data for required field.'
-        })
-
-    assert_bad_request(
-        client.post('/employees/', json = {
-            'name': 'X' * 71,
-            'email': 'X' * 256,
-            'telephone': 'X' * 33,
-            'employee_type_uid': 404
-        }),
-        expected_validation_messages = {
-            'name': 'Length must be between 1 and 70.',
-            'email': 'Length must be between 1 and 255.',
-            'telephone': 'Length must be between 1 and 32.',
-            'employee_type_uid': 'Not referencing an existing resource.'
-        })
-
-def test_post_rejects_uid(client: FlaskClient):
-    assert_bad_request(
-        client.post('/employees/', json = {
-            'uid': 42,
-            'name': '42',
-            'email': '42@universe.com',
-            'telephone': '07666 420042',
-            'employee_type_uid': 404
-        }),
-        expected_validation_messages = {
-            'uid': 'Unknown field.',
-            'employee_type_uid': 'Not referencing an existing resource.'
-        })
-
-def test_post_rejects_employee_type(client: FlaskClient):
-    assert_bad_request(
-        client.post('/employees/', json = {
-            'name': '42',
-            'email': '42@universe.com',
-            'telephone': '07666 420042',
-            'employee_type': {
-                'type': 'T'
-            }
-        }),
-        expected_validation_messages = {
-            'employee_type': 'Unknown field.'
-        })
-
-def test_post(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'T'
+def test_post_invalid_1(given: Given, when: When, then: Then):
+    when.post_employee({
+        'name': 42,
+        'email': 42,
+        'telephone': 42,
+        'employee_type_uid': 'frog'
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'name': 'Not a valid string.',
+        'email': 'Not a valid string.',
+        'telephone': 'Not a valid string.',
+        'employee_type_uid': 'Not a valid integer.'
     })
 
-    client.post('/employee-types/', json = {
-        'type': 'U'
+def test_post_invalid_2(given: Given, when: When, then: Then):
+    when.post_employee({
+        'name': '',
+        'email': '',
+        'telephone': '',
+        'employee_type_uid': 404
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'name': 'Length must be between 1 and 70.',
+        'email': 'Length must be between 1 and 255.',
+        'telephone': 'Length must be between 1 and 32.',
+        'employee_type_uid': 'Not referencing an existing resource.'
     })
 
-    assert_json(
-        client.post('/employees/', json = {
-            'name': 'A',
-            'email': 'a@ali.com',
-            'telephone': '07 123 123456',
-            'employee_type_uid': 1
-        }),
-        expected_code = 201,
-        expected_body = {
-            'uid': 1,
-            'name': 'A',
-            'email': 'a@ali.com',
-            'telephone': '07 123 123456',
-            'employee_type': {
-                'uid': 1,
-                'type': 'T'
-            }
-        })
+def test_post_invalid_3(given: Given, when: When, then: Then):
+    when.post_employee({
+        'name': None,
+        'email': None,
+        'telephone': None,
+        'employee_type_uid': None
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'name': 'Field may not be null.',
+        'email': 'Field may not be null.',
+        'telephone': 'Field may not be null.',
+        'employee_type_uid': 'Field may not be null.'
+    })
 
-    assert_json(
-        client.get('/employees/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 1, 'name': 'A', 'email': 'a@ali.com', 'telephone': '07 123 123456', 'employee_type': { 'uid': 1, 'type': 'T' } }
-        ])
+def test_post_invalid_4(given: Given, when: When, then: Then):
+    when.post_employee({
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'name': 'Missing data for required field.',
+        'email': 'Missing data for required field.',
+        'telephone': 'Missing data for required field.',
+        'employee_type_uid': 'Missing data for required field.'
+    })
 
-    assert_json(
-        client.get('/employees/1'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 1,
-            'name': 'A',
-            'email': 'a@ali.com',
-            'telephone': '07 123 123456',
-            'employee_type': {
-                'uid': 1,
-                'type': 'T'
-            }
-        })
+def test_post_invalid_5(given: Given, when: When, then: Then):
+    when.post_employee({
+        'name': 'X' * 71,
+        'email': 'X' * 256,
+        'telephone': 'X' * 33,
+        'employee_type_uid': 404
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'name': 'Length must be between 1 and 70.',
+        'email': 'Length must be between 1 and 255.',
+        'telephone': 'Length must be between 1 and 32.',
+        'employee_type_uid': 'Not referencing an existing resource.'
+    })
 
-    assert_json(
-        client.post('/employees/', json = {
-            'name': 'B',
-            'email': 'b@baba.com',
-            'telephone': '07 123 123456',
-            'employee_type_uid': 2
-        }),
-        expected_code = 201,
-        expected_body = {
-            'uid': 2,
-            'name': 'B',
-            'email': 'b@baba.com',
-            'telephone': '07 123 123456',
-            'employee_type': {
-                'uid': 2,
-                'type': 'U'
-            }
-        })
+def test_post_invalid_uid_extra(given: Given, when: When, then: Then):
+    when.post_employee({
+        'uid': 42,
+        'name': 'A',
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type_uid': 404
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'uid': 'Unknown field.',
+        'employee_type_uid': 'Not referencing an existing resource.'
+    })
 
-    assert_json(
-        client.get('/employees/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 1, 'name': 'A', 'email': 'a@ali.com', 'telephone': '07 123 123456', 'employee_type': { 'uid': 1, 'type': 'T' } },
-            { 'uid': 2, 'name': 'B', 'email': 'b@baba.com', 'telephone': '07 123 123456', 'employee_type': { 'uid': 2, 'type': 'U' } }
-        ])
+def test_post_invalid_employee_type_extra(given: Given, when: When, then: Then):
+    when.post_employee({
+        'name': 'A',
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type': {
+            'type': 'T'
+        }
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'employee_type': 'Unknown field.'
+    })
 
-    assert_json(
-        client.get('/employees/1'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 1,
-            'name': 'A',
-            'email': 'a@ali.com',
-            'telephone': '07 123 123456',
-            'employee_type': {
-                'uid': 1,
-                'type': 'T'
-            }
-        })
+def test_post(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
 
-    assert_json(
-        client.get('/employees/2'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 2,
-            'name': 'B',
-            'email': 'b@baba.com',
-            'telephone': '07 123 123456',
-            'employee_type': {
-                'uid': 2,
-                'type': 'U'
-            }
-        })
+    when.post_employee({
+        'name': 'A',
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type_uid': employee_type['uid']
+    })
+    then.created_201()
+    then.json({
+        'uid': 1,
+        'name': 'A',
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type': employee_type
+    })
+
+def test_post_get_multiple(given: Given, when: When, then: Then):
+    first_type = given.an_employee_type()
+    second_type = given.an_employee_type()
+
+    first = given.an_employee(of_type = first_type['uid'])
+    second = given.an_employee(of_type = second_type['uid'])
+
+    when.get_all_employees()
+    then.ok_200()
+    then.json([
+        first,
+        second
+    ])
+
+    when.get_employee(first['uid'])
+    then.ok_200()
+    then.json(first)
+
+    when.get_employee(second['uid'])
+    then.ok_200()
+    then.json(second)
 
 # PUT /employees/<int:id>
 # -----------------------------------------------------------------------------
 
-def test_put_id_nonint(client: FlaskClient):
-    assert_not_found(
-        client.put('/employees/frog', json = {
-            'name': 'X',
-            'email': 'x@x.com',
-            'telephone': '07 123 123456',
-            'employee_type_uid': 404
-        }))
+def test_put_id_nonint(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
 
-def test_put_id_404(client: FlaskClient):
-    rr = client.post('/employee-types/', json = {
-        'type': 'T'
-    })
-
-    assert_not_found(
-        client.put('/employees/404', json = {
-            'name': 'X',
-            'email': 'x@x.com',
-            'telephone': '07 123 123456',
-            'employee_type_uid': 1
-        }))
-
-def test_put_invalid(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'T'
-    })
-
-    client.post('/employees/', json = {
+    when.put_employee('frog', {
         'name': 'A',
-        'email': 'a@ali.com',
-        'telephone': '07 123 123456',
-        'employee_type_uid': 1
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type_uid': employee_type['uid']
     })
+    then.not_found_404()
 
-    assert_bad_request(
-        client.put('/employees/1', json = {
-            'name': 42,
-            'email': 42,
-            'telephone': 42,
-            'employee_type_uid': 'frog'
-        }),
-        expected_validation_messages = {
-            'name': 'Not a valid string.',
-            'email': 'Not a valid string.',
-            'telephone': 'Not a valid string.',
-            'employee_type_uid': 'Not a valid integer.'
-        })
+def test_put_id_404(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
 
-    assert_bad_request(
-        client.put('/employees/1', json = {
-            'name': '',
-            'email': '',
-            'telephone': '',
-            'employee_type_uid': 404
-        }),
-        expected_validation_messages = {
-            'name': 'Length must be between 1 and 70.',
-            'email': 'Length must be between 1 and 255.',
-            'telephone': 'Length must be between 1 and 32.',
-            'employee_type_uid': 'Not referencing an existing resource.'
-        })
-
-    assert_bad_request(
-        client.put('/employees/1', json = {
-            'name': None,
-            'email': None,
-            'telephone': None,
-            'employee_type_uid': None
-        }),
-        expected_validation_messages = {
-            'name': 'Field may not be null.',
-            'email': 'Field may not be null.',
-            'telephone': 'Field may not be null.',
-            'employee_type_uid': 'Field may not be null.'
-        })
-
-    assert_bad_request(
-        client.put('/employees/1', json = {
-        }),
-        expected_validation_messages = {
-            'name': 'Missing data for required field.',
-            'email': 'Missing data for required field.',
-            'telephone': 'Missing data for required field.',
-            'employee_type_uid': 'Missing data for required field.'
-        })
-
-    assert_bad_request(
-        client.put('/employees/1', json = {
-            'name': 'X' * 71,
-            'email': 'X' * 256,
-            'telephone': 'X' * 33,
-            'employee_type_uid': 404
-        }),
-        expected_validation_messages = {
-            'name': 'Length must be between 1 and 70.',
-            'email': 'Length must be between 1 and 255.',
-            'telephone': 'Length must be between 1 and 32.',
-            'employee_type_uid': 'Not referencing an existing resource.'
-        })
-
-def test_post_rejects_employee_type(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'T',
-    })
-
-    client.post('/employees/', json = {
+    when.put_employee('404', {
         'name': 'A',
-        'email': 'a@ali.com',
-        'telephone': '07 123 123456',
-        'employee_types_uid': 1
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type_uid': employee_type['uid']
+    })
+    then.not_found_404()
+
+def test_put_invalid_1(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
+    employee = given.an_employee(of_type = employee_type['uid'])
+
+    when.put_employee(employee['uid'], {
+        'name': 42,
+        'email': 42,
+        'telephone': 42,
+        'employee_type_uid': 'frog'
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'name': 'Not a valid string.',
+        'email': 'Not a valid string.',
+        'telephone': 'Not a valid string.',
+        'employee_type_uid': 'Not a valid integer.'
     })
 
-    assert_bad_request(
-        client.put('/employees/1', json = {
-            'name': 'B',
-            'email': 'b@baba.com',
-            'telephone': '07 123 123456',
-            'employee_type': {
-                'type': 'U'
-            }
-        }),
-        expected_validation_messages = {
-            'employee_type': 'Unknown field.'
-        })
+def test_put_invalid_2(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
+    employee = given.an_employee(of_type = employee_type['uid'])
 
-def test_put_rejects_uid_changes(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'T',
+    when.put_employee(employee['uid'], {
+        'name': '',
+        'email': '',
+        'telephone': '',
+        'employee_type_uid': 404
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'name': 'Length must be between 1 and 70.',
+        'email': 'Length must be between 1 and 255.',
+        'telephone': 'Length must be between 1 and 32.',
+        'employee_type_uid': 'Not referencing an existing resource.'
     })
 
-    client.post('/employee-types/', json = {
-        'type': 'U',
+def test_put_invalid_3(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
+    employee = given.an_employee(of_type = employee_type['uid'])
+
+    when.put_employee(employee['uid'], {
+        'name': None,
+        'email': None,
+        'telephone': None,
+        'employee_type_uid': None
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'name': 'Field may not be null.',
+        'email': 'Field may not be null.',
+        'telephone': 'Field may not be null.',
+        'employee_type_uid': 'Field may not be null.'
     })
 
-    client.post('/employees/', json = {
+def test_put_invalid_4(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
+    employee = given.an_employee(of_type = employee_type['uid'])
+
+    when.put_employee(employee['uid'], {
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'name': 'Missing data for required field.',
+        'email': 'Missing data for required field.',
+        'telephone': 'Missing data for required field.',
+        'employee_type_uid': 'Missing data for required field.'
+    })
+
+def test_put_invalid_5(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
+    employee = given.an_employee(of_type = employee_type['uid'])
+
+    when.put_employee(employee['uid'], {
+        'name': 'X' * 71,
+        'email': 'X' * 256,
+        'telephone': 'X' * 33,
+        'employee_type_uid': 404
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'name': 'Length must be between 1 and 70.',
+        'email': 'Length must be between 1 and 255.',
+        'telephone': 'Length must be between 1 and 32.',
+        'employee_type_uid': 'Not referencing an existing resource.'
+    })
+
+def test_put_invalid_employee_type_extra(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
+    employee = given.an_employee(of_type = employee_type['uid'])
+
+    when.put_employee(employee['uid'], {
         'name': 'A',
-        'email': 'a@ali.com',
-        'telephone': '07 123 123456',
-        'employee_types_uid': 1
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type': {
+            'type': 'T'
+        }
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'employee_type': 'Unknown field.'
     })
 
-    assert_bad_request(
-        client.put('/employees/1', json = {
-            'uid': 42,
+def test_put_invalid_uid_extra(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
+    employee = given.an_employee(of_type = employee_type['uid'])
+
+    when.put_employee(employee['uid'], {
+        'uid': 42,
+        'name': 'A',
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type': {
+            'type': 'T'
+        }
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'uid': 'Unknown field.'
+    })
+
+def test_put(given: Given, when: When, then: Then):
+    first_type = given.an_employee_type()
+    second_type = given.an_employee_type()
+
+    employee = given.an_employee(of_type = first_type['uid'])
+
+    when.put_employee(employee['uid'], {
+        'name': 'A',
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type_uid': second_type['uid']
+    })
+    then.ok_200()
+    then.json({
+        'uid': employee['uid'],
+        'name': 'A',
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type': second_type
+    })
+
+def test_put_get_multiple(given: Given, when: When, then: Then):
+    first_type = given.an_employee_type()
+    second_type = given.an_employee_type()
+
+    first_employee = given.an_employee(of_type = first_type['uid'])
+    second_employee = given.an_employee(of_type = second_type['uid'])
+
+    when.put_employee(second_employee['uid'], {
+        'name': 'A',
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type_uid': first_type['uid']
+    })
+
+    when.get_employee(second_employee['uid'])
+    then.ok_200()
+    then.json({
+        'uid': second_employee['uid'],
+        'name': 'A',
+        'email': 'a@unit.test',
+        'telephone': '07 999 000001',
+        'employee_type': first_type
+    })
+
+    when.get_all_employees()
+    then.ok_200()
+    then.json([
+        first_employee,
+        {
+           'uid': second_employee['uid'],
             'name': 'A',
-            'email': 'a@ali.com',
-            'telephone': '07 123 123456',
-            'employee_types_uid': 2
-        }),
-        expected_validation_messages = {
-            'uid': 'Unknown field.'
-        })
-
-def test_put(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'T',
-    })
-
-    client.post('/employee-types/', json = {
-        'type': 'U',
-    })
-
-    client.post('/employees/', json = {
-        'name': 'A',
-        'email': 'a@ali.com',
-        'telephone': '07 123 123456',
-        'employee_type_uid': 1
-    })
-
-    client.post('/employees/', json = {
-        'name': 'B',
-        'email': 'b@baba.com',
-        'telephone': '07 123 123456',
-        'employee_type_uid': 2
-    })
-
-    assert_json(
-        client.put('/employees/1', json = {
-            'name': 'X',
-            'email': 'x@tatic.com',
-            'telephone': '07 123 123456',
-            'employee_type_uid': 2
-        }),
-        expected_code = 200,
-        expected_body = {
-            'uid': 1,
-            'name': 'X',
-            'email': 'x@tatic.com',
-            'telephone': '07 123 123456',
-            'employee_type': {
-                'uid': 2,
-                'type': 'U'
-            }
-        })
-
-    assert_json(
-        client.get('/employees/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 1, 'name': 'X', 'email': 'x@tatic.com', 'telephone': '07 123 123456', 'employee_type': { 'uid': 2, 'type': 'U' } },
-            { 'uid': 2, 'name': 'B', 'email': 'b@baba.com', 'telephone': '07 123 123456', 'employee_type': { 'uid': 2, 'type': 'U' } }
-        ])
-
-    assert_json(
-        client.get('/employees/1'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 1,
-            'name': 'X',
-            'email': 'x@tatic.com',
-            'telephone': '07 123 123456',
-            'employee_type': {
-                'uid': 2,
-                'type': 'U'
-            }
-        })
-
-    assert_json(
-        client.put('/employees/2', json = {
-            'name': 'Y',
-            'email': 'y@oming.com',
-            'telephone': '07 123 123456',
-            'employee_type_uid': 1
-        }),
-        expected_code = 200,
-        expected_body = {
-            'uid': 2,
-            'name': 'Y',
-            'email': 'y@oming.com',
-            'telephone': '07 123 123456',
-            'employee_type': {
-                'uid': 1,
-                'type': 'T'
-            }
-        })
-
-    assert_json(
-        client.get('/employees/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 1, 'name': 'X', 'email': 'x@tatic.com', 'telephone': '07 123 123456', 'employee_type': { 'uid': 2, 'type': 'U' } },
-            { 'uid': 2, 'name': 'Y', 'email': 'y@oming.com', 'telephone': '07 123 123456', 'employee_type': { 'uid': 1, 'type': 'T' } }
-        ])
-
-    assert_json(
-        client.get('/employees/1'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 1,
-            'name': 'X',
-            'email': 'x@tatic.com',
-            'telephone': '07 123 123456',
-            'employee_type': {
-                'uid': 2,
-                'type': 'U'
-            }
-        })
-
-    assert_json(
-        client.get('/employees/2'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 2,
-            'name': 'Y',
-            'email': 'y@oming.com',
-            'telephone': '07 123 123456',
-            'employee_type': {
-                'uid': 1,
-                'type': 'T'
-            }
-        })
+            'email': 'a@unit.test',
+            'telephone': '07 999 000001',
+            'employee_type': first_type
+        }
+    ])
 
 # DELETE /employees/<int:id>
 # -----------------------------------------------------------------------------
 
-def test_delete_id_nonint(client: FlaskClient):
-    assert_not_found(
-        client.delete('/employees/frog'))
+def test_delete_id_nonint(given: Given, when: When, then: Then):
+    when.delete_employee('frog')
+    then.not_found_404()
 
-def test_delete_id_404(client: FlaskClient):
-    # Idempotent.
-    assert_no_content(
-        client.delete('/employees/404'))
+def test_delete_id_404(given: Given, when: When, then: Then):
+    when.delete_employee('404')
+    then.no_content_204() # Idempotent!
 
-def test_delete(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'T'
-    })
+def test_delete(given: Given, when: When, then: Then):
+    employee_type = given.an_employee_type()
 
-    client.post('/employees/', json = {
-        'name': 'A',
-        'email': 'a@ali.com',
-        'telephone': '07 123 123456',
-        'employee_type_uid': 1
-    })
+    first_employee = given.an_employee(of_type = employee_type['uid'])
+    second_employee = given.an_employee(of_type = employee_type['uid'])
 
-    client.post('/employees/', json = {
-        'name': 'B',
-        'email': 'b@baba.com',
-        'telephone': '07 123 123456',
-        'employee_type_uid': 1
-    })
+    when.get_all_employees()
+    then.ok_200()
+    then.json([
+        first_employee,
+        second_employee
+    ])
 
-    assert_json(
-        client.get('/employees/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 1, 'name': 'A', 'email': 'a@ali.com', 'telephone': '07 123 123456', 'employee_type': { 'uid': 1, 'type': 'T' } },
-            { 'uid': 2, 'name': 'B', 'email': 'b@baba.com', 'telephone': '07 123 123456', 'employee_type': { 'uid': 1, 'type': 'T' } }
-        ])
+    when.delete_employee(first_employee['uid'])
+    then.no_content_204()
 
-    assert_no_content(
-        client.delete('/employees/1'))
+    when.get_all_employees()
+    then.ok_200()
+    then.json([
+        second_employee
+    ])
 
-    assert_json(
-        client.get('/employees/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 2, 'name': 'B', 'email': 'b@baba.com', 'telephone': '07 123 123456', 'employee_type': { 'uid': 1, 'type': 'T' } }
-        ])
-
-    assert_not_found(
-        client.get('/employees/1'))
+    when.get_employee(first_employee['uid'])
+    then.not_found_404()

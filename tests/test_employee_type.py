@@ -1,388 +1,318 @@
-from flask.testing import FlaskClient
-from tests.utils import assert_bad_request, assert_conflict, assert_no_content, assert_not_found, assert_json, assert_not_found
+from tests.utils import Given, Then, When
 
 # GET /employee-types
 # -----------------------------------------------------------------------------
 
-def test_get(client: FlaskClient):
-    assert_json(
-        client.get('/employee-types/'),
-        expected_code = 200,
-        expected_body = [
-        ])
+def test_get(given: Given, when: When, then: Then):
+    when.get_all_employee_types()
+    then.ok_200()
+    then.json([
+    ])
 
 # GET /employee-types/<int:id>
 # -----------------------------------------------------------------------------
 
-def test_get_id_nonint(client: FlaskClient):
-    assert_not_found(
-        client.get('/employee-types/frog'))
+def test_get_id_nonint(given: Given, when: When, then: Then):
+    when.get_employee_type('frog')
+    then.not_found_404()
 
-def test_get_id_404(client: FlaskClient):
-    assert_not_found(
-        client.get('/employee-types/404'))
+def test_get_id_404(given: Given, when: When, then: Then):
+    when.get_employee_type('404')
+    then.not_found_404()
 
 # POST /employee-types
 # -----------------------------------------------------------------------------
 
-def test_post_invalid(client: FlaskClient):
-    assert_bad_request(
-        client.post('/employee-types/', json = {
-            'type': 42
-        }),
-        expected_validation_messages = {
-            'type': 'Not a valid string.'
-        })
+def test_post_invalid_type_not_string(given: Given, when: When, then: Then):
+    when.post_employee_type({
+        'type': 42
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'type': 'Not a valid string.'
+    })
 
-    assert_bad_request(
-        client.post('/employee-types/', json = {
-            'type': ''
-        }),
-        expected_validation_messages = {
-            'type': 'Length must be between 1 and 50.'
-        })
+def test_post_invalid_type_empty_string(given: Given, when: When, then: Then):
+    when.post_employee_type({
+        'type': ''
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'type': 'Length must be between 1 and 50.'
+    })
 
-    assert_bad_request(
-        client.post('/employee-types/', json = {
-            'type': None
-        }),
-        expected_validation_messages = {
-            'type': 'Field may not be null.'
-        })
+def test_post_invalid_type_null_string(given: Given, when: When, then: Then):
+    when.post_employee_type({
+        'type': None
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'type': 'Field may not be null.'
+    })
 
-    assert_bad_request(
-        client.post('/employee-types/', json = {
-        }),
-        expected_validation_messages = {
-            'type': 'Missing data for required field.'
-        })
+def test_post_invalid_type_missing(given: Given, when: When, then: Then):
+    when.post_employee_type({
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'type': 'Missing data for required field.'
+    })
 
-    assert_bad_request(
-        client.post('/employee-types/', json = {
-            'type': 'X' * 51
-        }),
-        expected_validation_messages = {
-            'type': 'Length must be between 1 and 50.'
-        })
+def test_post_invalid_type_large_string(given: Given, when: When, then: Then):
+    when.post_employee_type({
+        'type': 'X' * 51
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'type': 'Length must be between 1 and 50.'
+    })
 
-def test_post_duplicate(client: FlaskClient):
-    assert_json(
-        client.post('/employee-types/', json = {
-            'type': 'Duplicate'
-        }),
-        expected_code = 201,
-        expected_body = {
-            'uid': 1,
-            'type': 'Duplicate'
-        })
+def test_post_invalid_type_duplicate(given: Given, when: When, then: Then):
+    existing = given.an_employee_type()
 
-    assert_conflict(
-        client.post('/employee-types/', json = {
-            'type': 'Duplicate'
-        }),
-        expected_validation_messages = {
-            'type': 'Value must be unique.'
-        })
+    when.post_employee_type({
+        'type': existing['type']
+    })
+    then.conflict_409()
+    then.validation_messages({
+        'type': 'Value must be unique.'
+    })
 
-def test_post_rejects_uid(client: FlaskClient):
-    assert_bad_request(
-        client.post('/employee-types/', json = {
-            'uid': 42,
-            'type': '42'
-        }),
-        expected_validation_messages  ={
-            'uid': 'Unknown field.'
-        })
+def test_post_invalid_uid_extra(given: Given, when: When, then: Then):
+    when.post_employee_type({
+        'uid': 42,
+        'type': '42'
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'uid': 'Unknown field.'
+    })
 
-def test_post(client: FlaskClient):
-    assert_json(
-        client.post('/employee-types/', json = {
-            'type': 'A'
-        }),
-        expected_code = 201,
-        expected_body = {
-            'uid': 1,
-            'type': 'A'
-        })
+def test_post(given: Given, when: When, then: Then):
+    when.post_employee_type({
+        'type': 'A'
+    })
+    then.created_201()
+    then.json({
+        'uid': 1,
+        'type': 'A'
+    })
 
-    assert_json(
-        client.get('/employee-types/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 1, 'type': 'A' }
-        ])
+def test_post_get(given: Given, when: When, then: Then):
+    created = given.an_employee_type()
 
-    assert_json(
-        client.get('/employee-types/1'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 1,
-            'type': 'A'
-        })
+    when.get_all_employee_types()
+    then.ok_200()
+    then.json([
+        created
+    ])
 
-    assert_json(
-        client.post('/employee-types/', json = {
-            'type': 'B'
-        }),
-        expected_code = 201,
-        expected_body = {
-            'uid': 2,
-            'type': 'B'
-        })
+    when.get_employee_type(created['uid'])
+    then.ok_200()
+    then.json(created)
 
-    assert_json(
-        client.get('/employee-types/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 1, 'type': 'A' },
-            { 'uid': 2, 'type': 'B' }
-        ])
+def test_post_get_multiple(given: Given, when: When, then: Then):
+    first = given.an_employee_type()
+    second = given.an_employee_type()
 
-    assert_json(
-        client.get('/employee-types/1'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 1,
-            'type': 'A'
-        })
+    when.get_all_employee_types()
+    then.ok_200()
+    then.json([
+        first,
+        second
+    ])
 
-    assert_json(
-        client.get('/employee-types/2'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 2,
-            'type': 'B'
-        })
+    when.get_employee_type(first['uid'])
+    then.ok_200()
+    then.json(first)
+
+    when.get_employee_type(second['uid'])
+    then.ok_200()
+    then.json(second)
 
 # PUT /employee-types/<int:id>
 # -----------------------------------------------------------------------------
 
-def test_put_id_nonint(client: FlaskClient):
-    assert_not_found(
-        client.put('/employee-types/frog', json = {
+def test_put_id_nonint(given: Given, when: When, then: Then):
+    when.put_employee_type('frog', {
+        'type': 'X'
+    })
+    then.not_found_404()
+
+def test_put_id_404(given: Given, when: When, then: Then):
+    when.put_employee_type('404', {
+        'type': 'X'
+    })
+    then.not_found_404()
+
+def test_put_invalid_type_not_string(given: Given, when: When, then: Then):
+    existing = given.an_employee_type()
+
+    when.put_employee_type(existing['uid'], {
+        'type': 42
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'type': 'Not a valid string.'
+    })
+
+def test_put_invalid_type_empty_string(given: Given, when: When, then: Then):
+    existing = given.an_employee_type()
+
+    when.put_employee_type(existing['uid'], {
+        'type': ''
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'type': 'Length must be between 1 and 50.'
+    })
+
+def test_put_invalid_type_null(given: Given, when: When, then: Then):
+    existing = given.an_employee_type()
+
+    when.put_employee_type(existing['uid'], {
+        'type': None
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'type': 'Field may not be null.'
+    })
+
+def test_put_invalid_type_missing(given: Given, when: When, then: Then):
+    existing = given.an_employee_type()
+
+    when.put_employee_type(existing['uid'], {
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'type': 'Missing data for required field.'
+    })
+
+def test_put_invalid_type_large_string(given: Given, when: When, then: Then):
+    existing = given.an_employee_type()
+
+    when.put_employee_type(existing['uid'], {
+        'type': 'X' * 51
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'type': 'Length must be between 1 and 50.'
+    })
+
+def test_put_invalid_type_duplicate(given: Given, when: When, then: Then):
+    first = given.an_employee_type()
+    second = given.an_employee_type()
+
+    when.put_employee_type(second['uid'], {
+        'type': first['type']
+    })
+    then.conflict_409()
+    then.validation_messages({
+        'type': 'Value must be unique.'
+    })
+
+def test_put_self_duplicate(given: Given, when: When, then: Then):
+    existing = given.an_employee_type()
+
+    when.put_employee_type(existing['uid'], {
+        'type': existing['type']
+    })
+    then.ok_200()
+    then.json(existing)
+
+def test_put_invalid_uid_extra(given: Given, when: When, then: Then):
+    existing = given.an_employee_type()
+
+    when.put_employee_type(existing['uid'], {
+        'uid': 42,
+        'type': 'X'
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'uid': 'Unknown field.'
+    })
+
+def test_put(given: Given, when: When, then: Then):
+    existing = given.an_employee_type()
+
+    when.put_employee_type(existing['uid'], {
+        'type': 'X'
+    })
+    then.ok_200()
+    then.json({
+        'uid': existing['uid'],
+        'type': 'X'
+    })
+
+def test_put_get_multiple(given: Given, when: When, then: Then):
+    first = given.an_employee_type()
+    second = given.an_employee_type()
+
+    when.put_employee_type(first['uid'], {
+        'type': 'X'
+    })
+
+    when.put_employee_type(second['uid'], {
+        'type': 'Y'
+    })
+
+    when.get_all_employee_types()
+    then.ok_200()
+    then.json([
+        {
+            'uid': first['uid'],
             'type': 'X'
-        }))
-
-def test_put_id_404(client: FlaskClient):
-    assert_not_found(
-        client.put('/employee-types/404', json = {
-            'type': 'X'
-        }))
-
-
-def test_put_invalid(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'A'
-    })
-
-    assert_bad_request(
-        client.put('/employee-types/1', json = {
-            'type': 42
-        }),
-        expected_validation_messages = {
-            'type': 'Not a valid string.'
-        })
-
-    assert_bad_request(
-        client.put('/employee-types/1', json = {
-            'type': ''
-        }),
-        expected_validation_messages = {
-            'type': 'Length must be between 1 and 50.'
-        })
-
-    assert_bad_request(
-        client.put('/employee-types/1', json = {
-            'type': None
-        }),
-        expected_validation_messages = {
-            'type': 'Field may not be null.'
-        })
-
-    assert_bad_request(
-        client.put('/employee-types/1', json = {
-        }),
-        expected_validation_messages = {
-            'type': 'Missing data for required field.'
-        })
-
-    assert_bad_request(
-        client.put('/employee-types/1', json = {
-            'type': 'X' * 51
-        }),
-        expected_validation_messages = {
-            'type': 'Length must be between 1 and 50.'
-        })
-
-def test_put_duplicate(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'Duplicate'
-    })
-
-    client.post('/employee-types/', json = {
-        'type': 'B'
-    })
-
-    assert_conflict(
-        client.put('/employee-types/2', json = {
-            'type': 'Duplicate'
-        }),
-        expected_validation_messages = {
-            'type': 'Value must be unique.'
-        })
-
-def test_put_accepts_self_duplicate(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'Solo'
-    })
-
-    assert_json(
-        client.put('/employee-types/1', json = {
-            'type': 'Solo'
-        }),
-        expected_code = 200,
-        expected_body = {
-            'uid': 1,
-            'type': 'Solo'
-        })
-
-def test_put_rejects_uid_changes(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'A'
-    })
-
-    assert_bad_request(
-        client.put('/employee-types/1', json = {
-            'uid': 42,
-            'type': 'X'
-        }),
-        expected_validation_messages = {
-            'uid': 'Unknown field.'
-        })
-
-def test_put(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'A'
-    })
-
-    client.post('/employee-types/', json = {
-        'type': 'B'
-    })
-
-    assert_json(
-        client.put('/employee-types/1', json = {
-            'type': 'X'
-        }),
-        expected_code = 200,
-        expected_body = {
-            'uid': 1,
-            'type': 'X'
-        })
-
-    assert_json(
-        client.get('/employee-types/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 1, 'type': 'X' },
-            { 'uid': 2, 'type': 'B' }
-        ])
-
-    assert_json(
-        client.get('/employee-types/1'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 1,
-            'type': 'X'
-        })
-
-    assert_json(
-        client.put('/employee-types/2', json = {
+        },
+        {
+            'uid': second['uid'],
             'type': 'Y'
-        }),
-        expected_code = 200,
-        expected_body = {
-            'uid': 2,
-            'type': 'Y'
-        })
-
-    assert_json(
-        client.get('/employee-types/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 1, 'type': 'X' },
-            { 'uid': 2, 'type': 'Y' }
-        ])
-
-    assert_json(
-        client.get('/employee-types/1'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 1,
-            'type': 'X'
-        })
-
-    assert_json(
-        client.get('/employee-types/2'),
-        expected_code = 200,
-        expected_body = {
-            'uid': 2,
-            'type': 'Y'
-        })
+        }
+    ])
 
 # DELETE /employee-types/<int:id>
 # -----------------------------------------------------------------------------
 
-def test_delete_id_nonint(client: FlaskClient):
-    assert_not_found(
-        client.delete('/employee-types/frog'))
+def test_delete_id_nonint(given: Given, when: When, then: Then):
+    when.delete_employee_type('frog')
+    then.not_found_404()
 
-def test_delete_id_404(client: FlaskClient):
-    # Idempotent.
-    assert_no_content(
-        client.delete('/employee-types/404'))
+def test_delete_id_404(given: Given, when: When, then: Then):
+    when.delete_employee_type('404')
+    then.no_content_204() # Idempotent!
 
-def test_delete_protects_employee_type_with_employees(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'T'
-    })
+def test_delete_invalid_employee_type_with_employees(given: Given, when: When, then: Then):
+    t = given.an_employee_type()
+    e = given.an_employee(of_type = t['uid'])
 
-    client.post('/employees/', json = {
-        'name': 'N',
-        'email': 'e@mail.com',
-        'telephone': '07123 456789',
-        'employee_type_uid': 1
-    })
+    when.delete_employee_type(t['uid'])
+    then.conflict_409()
+    then.error_message('Employee type still has attached employees.')
 
-    assert_conflict(
-        client.delete('/employee-types/1'),
-        expected_message = 'Employee type still has attached employees.')
+def test_delete(given: Given, when: When, then: Then):
+    existing = given.an_employee_type()
 
-def test_delete(client: FlaskClient):
-    client.post('/employee-types/', json = {
-        'type': 'A'
-    })
+    when.delete_employee(existing['uid'])
+    then.no_content_204()
 
-    client.post('/employee-types/', json = {
-        'type': 'B'
-    })
+def test_delete_get_multiple(given: Given, when: When, then: Then):
+    first = given.an_employee_type()
+    second = given.an_employee_type()
 
-    assert_json(
-        client.get('/employee-types/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 1, 'type': 'A' },
-            { 'uid': 2, 'type': 'B' }
-        ])
+    when.get_all_employee_types()
+    then.ok_200()
+    then.json([
+        first,
+        second
+    ])
 
-    assert_no_content(
-        client.delete('/employee-types/1'))
+    when.delete_employee_type(first['uid'])
+    then.no_content_204()
 
-    assert_json(
-        client.get('/employee-types/'),
-        expected_code = 200,
-        expected_body = [
-            { 'uid': 2, 'type': 'B' }
-        ])
+    when.get_all_employee_types()
+    then.ok_200()
+    then.json([
+        second
+    ])
 
-    assert_not_found(
-        client.get('/employee-types/1'))
+    when.get_employee_type(first['uid'])
+    then.not_found_404()
