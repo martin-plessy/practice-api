@@ -421,8 +421,7 @@ def test_delete_without_manager(given: Given, when: When, then: Then):
 
 def test_delete_with_employees(given: Given, when: When, then: Then):
     practice = given.a_practice()
-    employee_type = given.an_employee_type()
-    employee = given.an_employee(of_type = employee_type['uid'], in_practice = practice['uid'])
+    employee = given.an_employee(in_practice = practice['uid'])
 
     when.delete_practice(practice['uid'])
     then.conflict_409()

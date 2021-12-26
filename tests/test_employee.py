@@ -177,13 +177,8 @@ def test_post(given: Given, when: When, then: Then):
     })
 
 def test_post_get_multiple(given: Given, when: When, then: Then):
-    practice = given.a_practice()
-
-    first_type = given.an_employee_type()
-    second_type = given.an_employee_type()
-
-    first = given.an_employee(of_type = first_type['uid'], in_practice = practice['uid'])
-    second = given.an_employee(of_type = second_type['uid'], in_practice = practice['uid'])
+    first = given.an_employee()
+    second = given.an_employee()
 
     when.get_all_employees()
     then.ok_200()
@@ -230,9 +225,7 @@ def test_put_id_404(given: Given, when: When, then: Then):
     then.not_found_404()
 
 def test_put_invalid_1(given: Given, when: When, then: Then):
-    practice = given.a_practice()
-    employee_type = given.an_employee_type()
-    employee = given.an_employee(of_type = employee_type['uid'], in_practice = practice['uid'])
+    employee = given.an_employee()
 
     when.put_employee(employee['uid'], {
         'name': 42,
@@ -251,9 +244,7 @@ def test_put_invalid_1(given: Given, when: When, then: Then):
     })
 
 def test_put_invalid_2(given: Given, when: When, then: Then):
-    practice = given.a_practice()
-    employee_type = given.an_employee_type()
-    employee = given.an_employee(of_type = employee_type['uid'], in_practice = practice['uid'])
+    employee = given.an_employee()
 
     when.put_employee(employee['uid'], {
         'name': '',
@@ -272,9 +263,7 @@ def test_put_invalid_2(given: Given, when: When, then: Then):
     })
 
 def test_put_invalid_3(given: Given, when: When, then: Then):
-    practice = given.a_practice()
-    employee_type = given.an_employee_type()
-    employee = given.an_employee(of_type = employee_type['uid'], in_practice = practice['uid'])
+    employee = given.an_employee()
 
     when.put_employee(employee['uid'], {
         'name': None,
@@ -293,9 +282,7 @@ def test_put_invalid_3(given: Given, when: When, then: Then):
     })
 
 def test_put_invalid_4(given: Given, when: When, then: Then):
-    practice = given.a_practice()
-    employee_type = given.an_employee_type()
-    employee = given.an_employee(of_type = employee_type['uid'], in_practice = practice['uid'])
+    employee = given.an_employee()
 
     when.put_employee(employee['uid'], {
     })
@@ -309,9 +296,7 @@ def test_put_invalid_4(given: Given, when: When, then: Then):
     })
 
 def test_put_invalid_5(given: Given, when: When, then: Then):
-    practice = given.a_practice()
-    employee_type = given.an_employee_type()
-    employee = given.an_employee(of_type = employee_type['uid'], in_practice = practice['uid'])
+    employee = given.an_employee()
 
     when.put_employee(employee['uid'], {
         'name': 'X' * 71,
@@ -331,8 +316,7 @@ def test_put_invalid_5(given: Given, when: When, then: Then):
 
 def test_put_invalid_employee_type_extra(given: Given, when: When, then: Then):
     practice = given.a_practice()
-    employee_type = given.an_employee_type()
-    employee = given.an_employee(of_type = employee_type['uid'], in_practice = practice['uid'])
+    employee = given.an_employee(in_practice = practice['uid'])
 
     when.put_employee(employee['uid'], {
         'name': 'A',
@@ -349,9 +333,8 @@ def test_put_invalid_employee_type_extra(given: Given, when: When, then: Then):
     })
 
 def test_put_invalid_practice_extra(given: Given, when: When, then: Then):
-    practice = given.a_practice()
     employee_type = given.an_employee_type()
-    employee = given.an_employee(of_type = employee_type['uid'], in_practice = practice['uid'])
+    employee = given.an_employee(of_type = employee_type['uid'])
 
     when.put_employee(employee['uid'], {
         'name': 'A',
@@ -388,20 +371,16 @@ def test_put_invalid_uid_extra(given: Given, when: When, then: Then):
     })
 
 def test_put(given: Given, when: When, then: Then):
-    first_practice = given.a_practice()
-    second_practice = given.a_practice()
-
-    first_type = given.an_employee_type()
-    second_type = given.an_employee_type()
-
-    employee = given.an_employee(of_type = first_type['uid'], in_practice = first_practice['uid'])
+    employee = given.an_employee()
+    another_practice = given.a_practice()
+    another_type = given.an_employee_type()
 
     when.put_employee(employee['uid'], {
         'name': 'A',
         'email': 'a@unit.test',
         'telephone': '07 999 000001',
-        'employee_type_uid': second_type['uid'],
-        'practice_uid': second_practice['uid']
+        'employee_type_uid': another_type['uid'],
+        'practice_uid': another_practice['uid']
     })
     then.ok_200()
     then.json({
@@ -409,19 +388,16 @@ def test_put(given: Given, when: When, then: Then):
         'name': 'A',
         'email': 'a@unit.test',
         'telephone': '07 999 000001',
-        'employee_type': second_type,
-        'practice': second_practice
+        'employee_type': another_type,
+        'practice': another_practice
     })
 
 def test_put_get_multiple(given: Given, when: When, then: Then):
     first_practice = given.a_practice()
-    second_practice = given.a_practice()
-
     first_type = given.an_employee_type()
-    second_type = given.an_employee_type()
 
     first_employee = given.an_employee(of_type = first_type['uid'], in_practice = first_practice['uid'])
-    second_employee = given.an_employee(of_type = second_type['uid'], in_practice = second_practice['uid'])
+    second_employee = given.an_employee()
 
     when.put_employee(second_employee['uid'], {
         'name': 'A',
@@ -503,10 +479,8 @@ def test_delete_id_404(given: Given, when: When, then: Then):
 def test_delete(given: Given, when: When, then: Then):
     practice = given.a_practice()
 
-    employee_type = given.an_employee_type()
-
-    first_employee = given.an_employee(of_type = employee_type['uid'], in_practice = practice['uid'])
-    second_employee = given.an_employee(of_type = employee_type['uid'], in_practice = practice['uid'])
+    first_employee = given.an_employee(in_practice = practice['uid'])
+    second_employee = given.an_employee(in_practice = practice['uid'])
 
     when.get_all_employees()
     then.ok_200()

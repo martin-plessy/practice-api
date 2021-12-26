@@ -10,6 +10,10 @@ class Given:
         self._practice_counter = 0
 
     def an_employee_type(self) -> Dict[str, Any]:
+        """
+        Creates a new employee type, with no employee attached.
+        """
+
         self._employee_type_counter = self._employee_type_counter + 1
 
         response = self._client.post('/employee-types/', json = {
@@ -19,13 +23,24 @@ class Given:
         return response.json
 
     def an_employee(self, of_type: Optional[Any] = None, in_practice: Optional[Any] = None) -> Dict[str, Any]:
-        self._employee_counter = self._employee_counter + 1
+        """
+        Creates a new employee type, with no employee attached.
+
+        | Parameter     | Value  | Description
+        | ------------- | ------ | --------------------------------------------
+        | `of_type`     | A UID  | The employee type's UID of the new employee.
+        | `of_type`     | `None` | Creates a new employee type on the fly.
+        | `in_practice` | A UID  | The practice's UID of the new employee.
+        | `in_practice` | `None` | Creates a new practice on the fly.
+        """
 
         if of_type is None:
             of_type = self.an_employee_type()['uid']
 
         if in_practice is None:
             in_practice = self.a_practice()['uid']
+
+        self._employee_counter = self._employee_counter + 1
 
         response = self._client.post('/employees/', json = {
             'name': f'Employee #{ self._employee_counter }',
@@ -38,6 +53,10 @@ class Given:
         return response.json
 
     def a_practice(self) -> Dict[str, Any]:
+        """
+        Creates a new practice, with no manager, and no employee attached.
+        """
+
         self._practice_counter = self._practice_counter + 1
 
         response = self._client.post('/practices/', json = {
@@ -49,20 +68,27 @@ class Given:
         return response.json
 
     def a_practice_with_a_manager(self, of_type: Optional[Any] = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        practice = self.a_practice()
+        """
+        Creates a new practice and a new employee,
+        attaches the employee as the practice's sole employee and manager.
+
+        | Parameter     | Value  | Description
+        | ------------- | ------ | --------------------------------------------
+        | `of_type`     | A UID  | The employee type's UID of the new manager.
+        | `of_type`     | `None` | Creates a new employee type on the fly.
+        """
+
+        manager = self.an_employee(of_type = of_type)
+        practice = manager['practice']
+
+        manager_uid = manager['uid']
         practice_uid = practice['uid']
+        self._client.put(f'/practices/{ practice_uid }/manager/{ manager_uid }')
 
-        if of_type is None:
-            of_type = self.an_employee_type()['uid']
+        practice['manager'] = manager.copy()
+        del practice['manager']['practice']
 
-        manager = self.an_employee(of_type = of_type, in_practice = practice_uid)
-
-        del practice['uid']
-        practice['manager_uid'] = manager['uid']
-
-        response = self._client.put(f'/practices/{ practice_uid }', json = practice)
-
-        return response.json, manager
+        return practice, manager
 
 class When:
     def __init__(self, client: FlaskClient) -> None:
