@@ -27,45 +27,39 @@ def test_post_invalid_1(given: Given, when: When, then: Then):
     when.post_practice({
         'name': 42,
         'address': 42,
-        'telephone': 42,
-        'manager_uid': 'frog'
+        'telephone': 42
     })
     then.bad_request_400()
     then.validation_messages({
         'name': 'Not a valid string.',
         'address': 'Not a valid string.',
-        'telephone': 'Not a valid string.',
-        'manager_uid': 'Not a valid integer.'
+        'telephone': 'Not a valid string.'
     })
 
 def test_post_invalid_2(given: Given, when: When, then: Then):
     when.post_practice({
         'name': '',
         'address': '',
-        'telephone': '',
-        'manager_uid': 404
+        'telephone': ''
     })
     then.bad_request_400()
     then.validation_messages({
         'name': 'Length must be between 1 and 70.',
         'address': 'Length must be between 1 and 255.',
-        'telephone': 'Length must be between 1 and 32.',
-        'manager_uid': 'Not referencing an existing resource.'
+        'telephone': 'Length must be between 1 and 32.'
     })
 
 def test_post_invalid_3(given: Given, when: When, then: Then):
     when.post_practice({
         'name': None,
         'address': None,
-        'telephone': None,
-        'manager_uid': None
+        'telephone': None
     })
     then.bad_request_400()
     then.validation_messages({
         'name': 'Field may not be null.',
         'address': 'Field may not be null.',
-        'telephone': 'Field may not be null.',
-        # 'manager_uid' is optional.
+        'telephone': 'Field may not be null.'
     })
 
 def test_post_invalid_4(given: Given, when: When, then: Then):
@@ -75,8 +69,7 @@ def test_post_invalid_4(given: Given, when: When, then: Then):
     then.validation_messages({
         'name': 'Missing data for required field.',
         'address': 'Missing data for required field.',
-        'telephone': 'Missing data for required field.',
-        # 'manager_uid' is optional.
+        'telephone': 'Missing data for required field.'
     })
 
 def test_post_invalid_5(given: Given, when: When, then: Then):
@@ -89,8 +82,7 @@ def test_post_invalid_5(given: Given, when: When, then: Then):
     then.validation_messages({
         'name': 'Length must be between 1 and 70.',
         'address': 'Length must be between 1 and 255.',
-        'telephone': 'Length must be between 1 and 32.',
-        # 'manager_uid' is optional.
+        'telephone': 'Length must be between 1 and 32.'
     })
 
 def test_post_invalid_uid_extra(given: Given, when: When, then: Then):
@@ -102,8 +94,7 @@ def test_post_invalid_uid_extra(given: Given, when: When, then: Then):
     })
     then.bad_request_400()
     then.validation_messages({
-        'uid': 'Unknown field.',
-        # 'manager_uid' is optional.
+        'uid': 'Unknown field.'
     })
 
 def test_post_invalid_manager_extra(given: Given, when: When, then: Then):
@@ -117,7 +108,7 @@ def test_post_invalid_manager_extra(given: Given, when: When, then: Then):
             'name': 'A',
             'email': 'a@unit.test',
             'telephone': '07 999 000002',
-            'manager_uid': employee_type['uid']
+            'employee_type_uid': employee_type['uid']
         }
     })
     then.bad_request_400()
@@ -125,7 +116,19 @@ def test_post_invalid_manager_extra(given: Given, when: When, then: Then):
         'manager': 'Unknown field.'
     })
 
-def test_post_without_manager(given: Given, when: When, then: Then):
+def test_post_invalid_manager_uid_extra(given: Given, when: When, then: Then):
+    when.post_practice({
+        'name': 'P',
+        'address': '1 Unit Square, Exeter',
+        'telephone': '07 999 000001',
+        'manager_uid': 404
+    })
+    then.bad_request_400()
+    then.validation_messages({
+        'manager_uid': 'Unknown field.'
+    })
+
+def test_post(given: Given, when: When, then: Then):
     when.post_practice({
         'name': 'P',
         'address': '1 Unit Square, Exeter',
@@ -137,33 +140,11 @@ def test_post_without_manager(given: Given, when: When, then: Then):
         'name': 'P',
         'address': '1 Unit Square, Exeter',
         'telephone': '07 999 000001'
-    })
-
-def test_post_with_manager(given: Given, when: When, then: Then):
-    employee_type = given.an_employee_type()
-    employee = given.an_employee(of_type = employee_type['uid'])
-
-    when.post_practice({
-        'name': 'P',
-        'address': '1 Unit Square, Exeter',
-        'telephone': '07 999 000001',
-        'manager_uid': employee['uid']
-    })
-    then.created_201()
-    then.json({
-        'uid': 1,
-        'name': 'P',
-        'address': '1 Unit Square, Exeter',
-        'telephone': '07 999 000001',
-        'manager': employee
     })
 
 def test_post_get_multiple(given: Given, when: When, then: Then):
-    manager_type = given.an_employee_type()
-    manager = given.an_employee(of_type = manager_type['uid'])
-
     first = given.a_practice()
-    second = given.a_practice(with_manager = manager['uid'])
+    second, manager = given.a_practice_with_a_manager()
 
     when.get_all_practices()
     then.ok_200()
@@ -313,6 +294,21 @@ def test_put_invalid_uid_extra(given: Given, when: When, then: Then):
         'uid': 'Unknown field.'
     })
 
+def test_put_invalid_manager_from_other_practice(given: Given, when: When, then: Then):
+    first_practice = given.a_practice()
+    manager = given.an_employee(in_practice = first_practice['uid'])
+
+    second_practice = given.a_practice()
+
+    when.put_practice(second_practice['uid'], {
+        'name': 'P',
+        'address': '1 Unit Square, Exeter',
+        'telephone': '07 999 000001',
+        'manager_uid': manager['uid']
+    })
+    then.conflict_409()
+    then.error_message('Manager works in another practice.')
+
 def test_put(given: Given, when: When, then: Then):
     practice = given.a_practice()
 
@@ -330,13 +326,9 @@ def test_put(given: Given, when: When, then: Then):
     })
 
 def test_put_get_multiple(given: Given, when: When, then: Then):
-    manager_type = given.an_employee_type()
-
-    first_manager = given.an_employee(of_type = manager_type['uid'])
-    second_manager = given.an_employee(of_type = manager_type['uid'])
-
-    first_practice = given.a_practice(with_manager = first_manager['uid'])
+    first_practice, first_manager = given.a_practice_with_a_manager()
     second_practice = given.a_practice()
+    second_manager = given.an_employee(in_practice = second_practice['uid'])
 
     when.put_practice(first_practice['uid'], {
         'name': 'P',
@@ -353,6 +345,8 @@ def test_put_get_multiple(given: Given, when: When, then: Then):
         'manager_uid': second_manager['uid']
     })
     then.ok_200()
+
+    del second_manager['practice']
 
     when.get_all_practices()
     then.ok_200()
@@ -425,22 +419,36 @@ def test_delete_without_manager(given: Given, when: When, then: Then):
     when.get_practice(first_practice['uid'])
     then.not_found_404()
 
-def test_delete_with_manager(given: Given, when: When, then: Then):
-    manager_type = given.an_employee_type()
-    manager = given.an_employee(of_type = manager_type['uid'])
-    practice = given.a_practice(with_manager = manager['uid'])
-
-    when.get_practice(practice['uid'])
-    then.ok_200()
-
-    when.get_employee(manager['uid'])
-    then.ok_200()
+def test_delete_with_employees(given: Given, when: When, then: Then):
+    practice = given.a_practice()
+    employee_type = given.an_employee_type()
+    employee = given.an_employee(of_type = employee_type['uid'], in_practice = practice['uid'])
 
     when.delete_practice(practice['uid'])
-    then.no_content_204()
+    then.conflict_409()
+    then.error_message('Practice still has attached employees.')
+
+    when.get_employee(employee['uid'])
+    then.ok_200()
+    then.json(employee)
 
     when.get_practice(practice['uid'])
-    then.not_found_404()
+    then.ok_200()
+    then.json(practice)
+
+def test_delete_with_manager(given: Given, when: When, then: Then):
+    practice, manager = given.a_practice_with_a_manager()
+
+    when.delete_practice(practice['uid'])
+    then.conflict_409()
+    then.error_message('Practice still has attached employees.')
+
+    when.get_practice(practice['uid'])
+    then.ok_200()
+    then.json(practice)
+
+    manager['practice'] = practice
 
     when.get_employee(manager['uid'])
     then.ok_200()
+    then.json(manager)

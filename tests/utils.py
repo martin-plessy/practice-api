@@ -1,5 +1,5 @@
 from flask.testing import FlaskClient
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 from werkzeug import test
 
 class Given:
@@ -18,29 +18,51 @@ class Given:
 
         return response.json
 
-    def an_employee(self, of_type: Any) -> Dict[str, Any]:
+    def an_employee(self, of_type: Optional[Any] = None, in_practice: Optional[Any] = None) -> Dict[str, Any]:
         self._employee_counter = self._employee_counter + 1
+
+        if of_type is None:
+            of_type = self.an_employee_type()['uid']
+
+        if in_practice is None:
+            in_practice = self.a_practice()['uid']
 
         response = self._client.post('/employees/', json = {
             'name': f'Employee #{ self._employee_counter }',
             'email': f'employee-n{ self._employee_counter }@unit.test',
             'telephone': f'07 123 { self._employee_counter :06}',
-            'employee_type_uid': of_type
+            'employee_type_uid': of_type,
+            'practice_uid': in_practice
         })
 
         return response.json
 
-    def a_practice(self, with_manager: Optional[Any] = None) -> Dict[str, Any]:
+    def a_practice(self) -> Dict[str, Any]:
         self._practice_counter = self._practice_counter + 1
 
         response = self._client.post('/practices/', json = {
             'name': f'Practice #{ self._practice_counter }',
             'address': f'{ self._practice_counter } Test Street, Exeter',
-            'telephone': f'07 234 { self._practice_counter :06}',
-            'manager_uid': with_manager
+            'telephone': f'07 234 { self._practice_counter :06}'
         })
 
         return response.json
+
+    def a_practice_with_a_manager(self, of_type: Optional[Any] = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        practice = self.a_practice()
+        practice_uid = practice['uid']
+
+        if of_type is None:
+            of_type = self.an_employee_type()['uid']
+
+        manager = self.an_employee(of_type = of_type, in_practice = practice_uid)
+
+        del practice['uid']
+        practice['manager_uid'] = manager['uid']
+
+        response = self._client.put(f'/practices/{ practice_uid }', json = practice)
+
+        return response.json, manager
 
 class When:
     def __init__(self, client: FlaskClient) -> None:
@@ -104,9 +126,21 @@ class When:
     def delete_practice(self, uid: Any):
         self._last_response = self._client.delete(f'/practices/{ uid }')
 
+    # Practice Managers
+    # -------------------------------------------------------------------------
+
+    def put_practice_manager(self, practice_uid: Any, manager_uid: Any):
+        self._last_response = self._client.put(f'/practices/{ practice_uid }/manager/{ manager_uid }')
+
+    def delete_practice_manager(self, practice_uid: Any):
+        self._last_response = self._client.delete(f'/practices/{ practice_uid }/manager/')
+
 class Then:
     def __init__(self, when: When) -> None:
         self._when = when
+
+    def __call__(self) -> Optional[test.TestResponse]:
+        return self._when._last_response
 
     def json(self, expected_json: Dict[str, Any]):
         self._assert_mimetype('application/json')

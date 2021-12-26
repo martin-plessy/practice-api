@@ -17,10 +17,10 @@ class Employee(db.Model):
     telephone = db.Column(db.String(32), nullable = False)
 
     employee_type_uid = db.Column(db.Integer(), db.ForeignKey('employee_type.uid'), nullable = False)
-    employee_type = db.relationship('EmployeeType')
+    employee_type = db.relationship('EmployeeType', foreign_keys = [ employee_type_uid ])
 
-    # practice_uid = db.Column(db.Integer(), db.ForeignKey('practice.uid'), nullable = False)
-    # practice = db.relationship('Practice')
+    practice_uid = db.Column(db.Integer(), db.ForeignKey('practice.uid'), nullable = False)
+    practice = db.relationship('Practice', foreign_keys = [ practice_uid ])
 
 class Practice(db.Model):
     uid = db.Column(db.Integer(), primary_key = True)
@@ -30,7 +30,7 @@ class Practice(db.Model):
     # Removing the branch to keep it simpler here...
 
     manager_uid = db.Column(db.Integer(), db.ForeignKey('employee.uid'), nullable = True)
-    manager = db.relationship('Employee')
+    manager = db.relationship('Employee', foreign_keys = [ manager_uid ])
 
 class EmployeeTypeSchema(ApiSchema):
     uid = fields.Integer(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
@@ -49,26 +49,27 @@ class EmployeeSchema(ApiSchema):
     employee_type_uid = fields.Integer(required = True, validate = [ FkReference(EmployeeType) ], load_only = True)
     employee_type = fields.Nested('EmployeeTypeSchema', required = True, dump_only = True)
 
-    # practice_uid = fields.Integer(required = True, validate = [ FkReference(Practice) ], load_only = True)
-    # practice = fields.Nested('PracticeSchema', required = True, dump_only = True)
+    practice_uid = fields.Integer(required = True, validate = [ FkReference(Practice) ], load_only = True)
+    practice = fields.Nested('PracticeSchema', exclude = [ 'manager.practice' ], required = True, dump_only = True)
 
     @post_load
     def dict_to_object(self, data: Mapping[str, Any], **kwargs):
         return Employee(**data)
 
-class PracticeSchema(ApiSchema):
+class NewPracticeSchema(ApiSchema):
     uid = fields.Integer(required = True, validate = [ validate.Range(min = 1) ], dump_only = True)
     name = fields.String(required = True, validate = [ validate.Length(min = 1, max = 70) ])
     address = fields.String(required = True, validate = [ validate.Length(min = 1, max = 255) ])
     telephone = fields.String(required = True, validate = [ validate.Length(min = 1, max = 32) ])
     # Removing the branch to keep it simpler here...
 
-    manager_uid = fields.Integer(required = False, validate = [ FkReference(Employee) ], load_only = True, load_default = None)
-    manager = fields.Nested('EmployeeSchema', required = False, dump_only = True, dump_default = None)
-
     @post_load
     def dict_to_object(self, data: Mapping[str, Any], **kwargs):
         return Practice(**data)
+
+class PracticeSchema(NewPracticeSchema):
+    manager_uid = fields.Integer(required = False, validate = [ FkReference(Employee) ], load_only = True, load_default = None)
+    manager = fields.Nested('EmployeeSchema', exclude = [ 'practice' ], required = False, dump_only = True, dump_default = None)
 
 bp = ApiBlueprint('Employees', __name__)
 
@@ -151,10 +152,15 @@ class EmployeeItem(MethodView):
     def put(self, employee: Employee, id: int):
         existing_employee: Employee = db.session.query(Employee).get_or_404(id)
 
+        # When the manager of a practice moves to another practice, the original practice looses its manager.
+        if existing_employee.practice_uid != employee.practice_uid and existing_employee.practice.manager_uid == id:
+            existing_employee.practice.manager_uid = None
+
         existing_employee.name = employee.name
         existing_employee.email = employee.email
         existing_employee.telephone = employee.telephone
         existing_employee.employee_type_uid = employee.employee_type_uid
+        existing_employee.practice_uid = employee.practice_uid
         db.session.commit()
 
         return existing_employee
@@ -170,7 +176,7 @@ class PracticeCollection(MethodView):
     def get(self):
         return db.session.query(Practice).all()
 
-    @bp.arguments(PracticeSchema)
+    @bp.arguments(NewPracticeSchema)
     @bp.response(201, PracticeSchema)
     def post(self, practice: Practice):
         db.session.add(practice)
@@ -189,6 +195,10 @@ class PracticeItem(MethodView):
     def put(self, practice: Practice, id: int):
         existing_practice: Practice = db.session.query(Practice).get_or_404(id)
 
+        # When the new manager of a practice is not assigned to this practice, raise an error.
+        if practice.manager_uid is not None and existing_practice.manager_uid != practice.manager_uid and db.session.query(Employee).get(practice.manager_uid).practice_uid != id:
+            abort(409, message = 'Manager works in another practice.')
+
         existing_practice.name = practice.name
         existing_practice.address = practice.address
         existing_practice.telephone = practice.telephone
@@ -199,5 +209,30 @@ class PracticeItem(MethodView):
 
     @bp.response(204)
     def delete(self, id: int):
+        if db.session.query(db.session.query(Employee).filter(Employee.practice_uid == id).exists()).scalar():
+            abort(409, message = 'Practice still has attached employees.')
+
         db.session.query(Practice).filter(Practice.uid == id).delete()
+        db.session.commit()
+
+@bp.route('/practices/<int:pid>/manager/')
+class PracticeManagerCollection(MethodView):
+    @bp.response(204)
+    def delete(self, pid: int):
+        existing_practice: Practice = db.session.query(Practice).get_or_404(pid)
+
+        existing_practice.manager_uid = None
+        db.session.commit()
+
+@bp.route('/practices/<int:pid>/manager/<int:mid>')
+class PracticeManagerItem(MethodView):
+    @bp.response(204)
+    def put(self, pid: int, mid: int):
+        existing_practice: Practice = db.session.query(Practice).get_or_404(pid)
+
+        # When the new manager of a practice is not assigned to this practice, raise an error.
+        if existing_practice.manager_uid != mid and db.session.query(Employee).get_or_404(mid).practice_uid != pid:
+            abort(409, message = 'Manager works in another practice.')
+
+        existing_practice.manager_uid = mid
         db.session.commit()
